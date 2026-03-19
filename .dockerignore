@@ -1,0 +1,10 @@
+.env.local
+.env.*.local
+.git
+.github
+vendor/
+var/
+docker/
+docs/
+*.md
+.php-cs-fixer.cache

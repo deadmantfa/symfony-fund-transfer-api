@@ -3,9 +3,27 @@
     admin off
 }
 
+# HTTP - redirect to HTTPS in production; serve directly in dev
 :80 {
     root * /app/public
     encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Content-Security-Policy "default-src 'none'"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "geolocation=(), microphone=()"
+    }
+
+    php_server
+}
+
+# HTTPS - full security headers
+:443 {
+    root * /app/public
+    encode gzip
+    tls internal
 
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"

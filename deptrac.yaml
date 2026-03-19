@@ -25,7 +25,6 @@ deptrac:
   ruleset:
     Controller:
       - Application
-      - Domain
     Application:
       - Domain
     Infrastructure:

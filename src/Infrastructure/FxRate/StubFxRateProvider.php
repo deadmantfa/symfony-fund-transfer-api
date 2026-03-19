@@ -61,6 +61,6 @@ class StubFxRateProvider implements FxRateProviderInterface
 
     public function getSupportedCurrencies(): array
     {
-        return array_keys($this->rates);
+        return array_values(array_filter(array_keys($this->rates), static fn (string $k) => !str_contains($k, '/')));
     }
 }

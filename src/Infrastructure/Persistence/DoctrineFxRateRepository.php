@@ -27,11 +27,18 @@ final class DoctrineFxRateRepository implements FxRateRepository
             return null;
         }
 
+        assert(is_string($row['id']));
+        assert(is_string($row['base_currency']));
+        assert(is_string($row['target_currency']));
+        assert(is_string($row['rate']) || is_numeric($row['rate']));
+        assert(is_string($row['provider']));
+        assert(is_string($row['fetched_at']));
+
         return new FxRate(
             id: new FxRateId($row['id']),
             baseCurrency: new CurrencyCode($row['base_currency']),
             targetCurrency: new CurrencyCode($row['target_currency']),
-            rate: BigDecimal::of($row['rate']),
+            rate: BigDecimal::of((string) $row['rate']),
             provider: $row['provider'],
             fetchedAt: new \DateTimeImmutable($row['fetched_at']),
         );

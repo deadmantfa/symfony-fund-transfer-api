@@ -43,7 +43,10 @@ final class CachingFxRateService
         $item = $this->cache->getItem($cacheKey);
 
         if ($item->isHit()) {
-            return $item->get(); // @phpstan-ignore return.type
+            $cached = $item->get();
+            assert($cached instanceof FxRate);
+
+            return $cached;
         }
 
         // 3. Provider (Frankfurter)
@@ -68,8 +71,10 @@ final class CachingFxRateService
         $staleItem = $this->cache->getItem("fx_rate_stale_{$from}_{$to}");
         if ($staleItem->isHit()) {
             $this->logger->warning("Using stale cached FX rate for {$from}/{$to}");
+            $stale = $staleItem->get();
+            assert($stale instanceof FxRate);
 
-            return $staleItem->get(); // @phpstan-ignore return.type
+            return $stale;
         }
 
         // 5. DB fallback

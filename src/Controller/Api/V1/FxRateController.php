@@ -8,6 +8,7 @@ use App\Domain\FxRate\FxRateUnavailableException;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Infrastructure\FxRate\CachingFxRateService;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -31,7 +32,7 @@ final class FxRateController
         try {
             $rate = $this->fxRateService->getRate($fromCurrency, $toCurrency);
         } catch (FxRateUnavailableException $e) {
-            throw new UnprocessableEntityHttpException($e->getMessage());
+            throw new ServiceUnavailableHttpException(null, $e->getMessage());
         }
 
         return new JsonResponse([

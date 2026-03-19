@@ -12,7 +12,6 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 test('returns FxRate on successful response', function (): void {
     /** @var ResponseInterface&MockObject $response */
     $response = $this->createMock(ResponseInterface::class);
-    $response->method('getStatusCode')->willReturn(200);
     $response->method('toArray')->willReturn([
         'base'  => 'USD',
         'rates' => ['EUR' => 0.915],

@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:latest-php8.5-alpine
+FROM dunglas/frankenphp:latest
 
 RUN install-php-extensions \
     pdo_pgsql \
@@ -13,6 +13,5 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY docker/frankenphp/Caddyfile /etc/caddy/Caddyfile
 COPY . .
-RUN composer install --no-interaction --optimize-autoloader --no-dev --no-scripts
-RUN chown -R www-data:www-data /app/var /app/public
-USER www-data
+RUN composer install --no-interaction --optimize-autoloader --no-scripts
+RUN mkdir -p /app/var /app/public && chmod -R 777 /app/var

@@ -4,7 +4,7 @@
 .github
 vendor/
 var/
-docker/
+docker/frankenphp/Dockerfile
 docs/
 *.md
 .php-cs-fixer.cache

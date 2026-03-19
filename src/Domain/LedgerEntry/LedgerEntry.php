@@ -21,12 +21,31 @@ final readonly class LedgerEntry
         public readonly Money $balanceBefore,
         public readonly Money $balanceAfter,
         public readonly DateTimeImmutable $createdAt,
-    ) {}
+    ) {
+    }
 
     public static function record(
-        LedgerEntryId $id, TransferId $transferId, AccountId $accountId,
-        EntryType $entryType, Money $amount, Money $balanceBefore, Money $balanceAfter,
+        LedgerEntryId $id,
+        TransferId $transferId,
+        AccountId $accountId,
+        EntryType $entryType,
+        Money $amount,
+        Money $balanceBefore,
+        Money $balanceAfter,
     ): self {
         return new self($id, $transferId, $accountId, $entryType, $amount, $balanceBefore, $balanceAfter, new DateTimeImmutable());
+    }
+
+    public static function fromRow(
+        LedgerEntryId $id,
+        TransferId $transferId,
+        AccountId $accountId,
+        EntryType $entryType,
+        Money $amount,
+        Money $balanceBefore,
+        Money $balanceAfter,
+        DateTimeImmutable $createdAt,
+    ): self {
+        return new self($id, $transferId, $accountId, $entryType, $amount, $balanceBefore, $balanceAfter, $createdAt);
     }
 }

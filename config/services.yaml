@@ -39,6 +39,12 @@ services:
     App\Domain\User\UserRepository:
         alias: App\Infrastructure\Persistence\DoctrineUserRepository
 
+    App\Domain\Account\AccountRepository:
+        alias: App\Infrastructure\Persistence\DoctrineAccountRepository
+
+    App\Domain\LedgerEntry\LedgerEntryRepository:
+        alias: App\Infrastructure\Persistence\DoctrineLedgerEntryRepository
+
     App\Controller\Api\V1\AuthController:
         arguments:
             $registerLimiter: '@limiter.register_limiter'

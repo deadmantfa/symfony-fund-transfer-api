@@ -11,6 +11,7 @@ RUN install-php-extensions \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
+COPY docker/frankenphp/Caddyfile /etc/caddy/Caddyfile
 COPY . .
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 RUN chown -R www-data:www-data /app/var

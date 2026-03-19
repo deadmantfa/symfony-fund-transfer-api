@@ -18,28 +18,28 @@ final class RegisterUserHandler
 
     public function __invoke(RegisterUserCommand $command): User
     {
+        $id = $this->userRepository->nextIdentity();
+
+        // Hash before the duplicate check: both the "exists" and "new" paths
+        // take the same ~argon2id time, preventing email enumeration via timing.
+        // SecurityUser wrapping a stub entity is needed so the correct hasher
+        // (configured per SecurityUser class) is selected.
+        $passwordHash = $this->passwordHasher->hashPassword(
+            new SecurityUser(User::register(
+                id: $id,
+                email: $command->email,
+                firstName: $command->firstName,
+                lastName: $command->lastName,
+                passwordHash: '',
+                phoneNumber: $command->phoneNumber,
+            )),
+            $command->password,
+        );
+
         if ($this->userRepository->findByEmail($command->email) !== null) {
             throw new \DomainException("Email '{$command->email}' is already registered.");
         }
 
-        $id = $this->userRepository->nextIdentity();
-
-        // Create user with empty hash first to get a UserInterface for the hasher
-        $user = User::register(
-            id: $id,
-            email: $command->email,
-            firstName: $command->firstName,
-            lastName: $command->lastName,
-            passwordHash: '',
-            phoneNumber: $command->phoneNumber,
-        );
-
-        $passwordHash = $this->passwordHasher->hashPassword(
-            new SecurityUser($user),
-            $command->password,
-        );
-
-        // Re-create with the actual hash
         $user = User::register(
             id: $id,
             email: $command->email,

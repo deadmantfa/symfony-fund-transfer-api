@@ -42,6 +42,7 @@ services:
     App\Controller\Api\V1\AuthController:
         arguments:
             $registerLimiter: '@limiter.register_limiter'
+            $refreshTokenTtl: '%env(int:JWT_REFRESH_TTL)%'
 
 when@test:
     services:

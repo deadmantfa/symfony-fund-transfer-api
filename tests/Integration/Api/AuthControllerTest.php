@@ -81,7 +81,7 @@ final class AuthControllerTest extends WebTestCase
             (string) json_encode(['email' => 'login@example.com', 'password' => 'SecurePass123!']),
         );
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(200);
         /** @var array{token: string} $body */
         $body = json_decode((string) $client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('token', $body);

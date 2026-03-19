@@ -8,6 +8,7 @@ use App\Domain\User\User;
 use App\Domain\User\UserId;
 use App\Domain\User\UserRepository;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class DoctrineUserRepository implements UserRepository
 {
@@ -35,6 +36,7 @@ final class DoctrineUserRepository implements UserRepository
 
     public function save(User $user): void
     {
+        try {
         $this->connection->executeStatement(
             'INSERT INTO users
                 (id, email, first_name, last_name, password_hash, phone_number,
@@ -71,6 +73,13 @@ final class DoctrineUserRepository implements UserRepository
                 $user->updatedAt->format('Y-m-d H:i:s'),
             ],
         );
+        } catch (UniqueConstraintViolationException $e) {
+            throw new \DomainException(
+                "Email '{$user->email}' is already registered.",
+                0,
+                $e,
+            );
+        }
     }
 
     public function nextIdentity(): UserId

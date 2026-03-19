@@ -25,6 +25,7 @@ final class AuthController
         private readonly RateLimiterFactory $registerLimiter,
         private readonly RefreshTokenGeneratorInterface $refreshTokenGenerator,
         private readonly RefreshTokenManagerInterface $refreshTokenManager,
+        private readonly int $refreshTokenTtl,
     ) {}
 
     /**
@@ -69,7 +70,7 @@ final class AuthController
         $securityUser = new SecurityUser($user);
         $token = $this->jwtManager->create($securityUser);
 
-        $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl($securityUser, 2592000);
+        $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl($securityUser, $this->refreshTokenTtl);
         $this->refreshTokenManager->save($refreshToken);
 
         return new JsonResponse(

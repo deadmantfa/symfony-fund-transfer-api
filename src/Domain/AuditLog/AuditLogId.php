@@ -6,7 +6,7 @@ namespace App\Domain\AuditLog;
 
 use App\Domain\Shared\ValueObject\Uuid;
 
-readonly final class AuditLogId
+final readonly class AuditLogId
 {
     public function __construct(public readonly string $value)
     {

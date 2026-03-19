@@ -59,7 +59,7 @@ test('same currency returns rate of 1', function (): void {
 });
 
 test('uses DB fallback when provider fails', function (): void {
-    $failingProvider = new class extends StubFxRateProvider {
+    $failingProvider = new class () extends StubFxRateProvider {
         public function getRate(CurrencyCode $from, CurrencyCode $to): FxRate
         {
             throw new FxRateUnavailableException($from, $to);
@@ -83,7 +83,7 @@ test('uses DB fallback when provider fails', function (): void {
 });
 
 test('throws when provider fails and no DB fallback', function (): void {
-    $failingProvider = new class extends StubFxRateProvider {
+    $failingProvider = new class () extends StubFxRateProvider {
         public function getRate(CurrencyCode $from, CurrencyCode $to): FxRate
         {
             throw new FxRateUnavailableException($from, $to);

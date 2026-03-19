@@ -16,7 +16,9 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
  */
 final class UserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {
-    public function __construct(private readonly UserRepository $userRepository) {}
+    public function __construct(private readonly UserRepository $userRepository)
+    {
+    }
 
     public function loadUserByIdentifier(string $identifier): UserInterface
     {

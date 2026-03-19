@@ -12,5 +12,6 @@ final readonly class RegisterUserCommand
         public readonly string $firstName,
         public readonly string $lastName,
         public readonly ?string $phoneNumber = null,
-    ) {}
+    ) {
+    }
 }

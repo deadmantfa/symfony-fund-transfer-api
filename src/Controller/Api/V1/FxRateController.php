@@ -17,7 +17,8 @@ final class FxRateController
 {
     public function __construct(
         private readonly CachingFxRateService $fxRateService,
-    ) {}
+    ) {
+    }
 
     #[Route('/{from}/{to}', methods: ['GET'])]
     public function pair(string $from, string $to): JsonResponse

@@ -12,7 +12,9 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class DoctrineUserRepository implements UserRepository
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private readonly Connection $connection)
+    {
+    }
 
     public function findById(UserId $id): ?User
     {
@@ -37,8 +39,8 @@ final class DoctrineUserRepository implements UserRepository
     public function save(User $user): void
     {
         try {
-        $this->connection->executeStatement(
-            'INSERT INTO users
+            $this->connection->executeStatement(
+                'INSERT INTO users
                 (id, email, first_name, last_name, password_hash, phone_number,
                  date_of_birth, address, kyc_status, status,
                  email_verified_at, terms_accepted_at, created_at, updated_at)
@@ -56,23 +58,23 @@ final class DoctrineUserRepository implements UserRepository
                 email_verified_at = EXCLUDED.email_verified_at,
                 terms_accepted_at = EXCLUDED.terms_accepted_at,
                 updated_at = EXCLUDED.updated_at',
-            [
-                (string) $user->id,
-                $user->email,
-                $user->firstName,
-                $user->lastName,
-                $user->passwordHash,
-                $user->phoneNumber,
-                $user->dateOfBirth?->format('Y-m-d'),
-                $user->address !== null ? json_encode($user->address) : null,
-                $user->kycStatus->value,
-                $user->status->value,
-                $user->emailVerifiedAt?->format('Y-m-d H:i:s'),
-                $user->termsAcceptedAt?->format('Y-m-d H:i:s'),
-                $user->createdAt->format('Y-m-d H:i:s'),
-                $user->updatedAt->format('Y-m-d H:i:s'),
-            ],
-        );
+                [
+                    (string) $user->id,
+                    $user->email,
+                    $user->firstName,
+                    $user->lastName,
+                    $user->passwordHash,
+                    $user->phoneNumber,
+                    $user->dateOfBirth?->format('Y-m-d'),
+                    $user->address !== null ? json_encode($user->address) : null,
+                    $user->kycStatus->value,
+                    $user->status->value,
+                    $user->emailVerifiedAt?->format('Y-m-d H:i:s'),
+                    $user->termsAcceptedAt?->format('Y-m-d H:i:s'),
+                    $user->createdAt->format('Y-m-d H:i:s'),
+                    $user->updatedAt->format('Y-m-d H:i:s'),
+                ],
+            );
         } catch (UniqueConstraintViolationException $e) {
             throw new \DomainException(
                 "Email '{$user->email}' is already registered.",

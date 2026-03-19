@@ -23,16 +23,23 @@ final readonly class AuditLog
         public readonly ?string $ipAddress,
         public readonly ?string $userAgent,
         public readonly DateTimeImmutable $createdAt,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed>|null $oldValue
      * @param array<string, mixed>|null $newValue
      */
     public static function record(
-        AuditLogId $id, string $entityType, string $entityId, string $action,
-        ?UserId $actorId = null, ?array $oldValue = null, ?array $newValue = null,
-        ?string $ipAddress = null, ?string $userAgent = null,
+        AuditLogId $id,
+        string $entityType,
+        string $entityId,
+        string $action,
+        ?UserId $actorId = null,
+        ?array $oldValue = null,
+        ?array $newValue = null,
+        ?string $ipAddress = null,
+        ?string $userAgent = null,
     ): self {
         return new self($id, $entityType, $entityId, $action, $actorId, $oldValue, $newValue, $ipAddress, $userAgent, new DateTimeImmutable());
     }

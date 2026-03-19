@@ -26,7 +26,8 @@ final class AuthController
         private readonly RefreshTokenGeneratorInterface $refreshTokenGenerator,
         private readonly RefreshTokenManagerInterface $refreshTokenManager,
         private readonly int $refreshTokenTtl,
-    ) {}
+    ) {
+    }
 
     /**
      * Login is handled by Symfony's json_login firewall.

@@ -20,14 +20,23 @@ final class Account
         public private(set) AccountStatus $status,
         public private(set) readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
-    ) {}
+    ) {
+    }
 
     public static function open(AccountId $id, UserId $userId, CurrencyCode $currency, string $name): self
     {
         $now = new DateTimeImmutable();
 
-        return new self($id, $userId, $currency, $name,
-            new Money('0.00000000', $currency), AccountStatus::Active, $now, $now);
+        return new self(
+            $id,
+            $userId,
+            $currency,
+            $name,
+            new Money('0.00000000', $currency),
+            AccountStatus::Active,
+            $now,
+            $now
+        );
     }
 
     /** @param array<string, mixed> $row */

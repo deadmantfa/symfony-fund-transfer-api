@@ -17,7 +17,8 @@ final class FrankfurterFxRateProvider implements FxRateProviderInterface
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly string $baseUrl,
-    ) {}
+    ) {
+    }
 
     public function getRate(CurrencyCode $from, CurrencyCode $to): FxRate
     {

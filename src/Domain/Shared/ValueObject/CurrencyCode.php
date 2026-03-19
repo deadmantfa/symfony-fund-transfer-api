@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\ValueObject;
 
-readonly final class CurrencyCode
+final readonly class CurrencyCode
 {
     public function __construct(public readonly string $value)
     {

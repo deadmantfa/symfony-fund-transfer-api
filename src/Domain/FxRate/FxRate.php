@@ -17,5 +17,6 @@ final readonly class FxRate
         public readonly BigDecimal $rate,
         public readonly string $provider,
         public readonly DateTimeImmutable $fetchedAt,
-    ) {}
+    ) {
+    }
 }

@@ -15,8 +15,13 @@ test('ledger entry records debit with balances', function (): void {
     $amount = new Money('40.00', new CurrencyCode('USD'));
     $after  = new Money('60.00', new CurrencyCode('USD'));
     $entry  = LedgerEntry::record(
-        LedgerEntryId::generate(), TransferId::generate(), AccountId::generate(),
-        EntryType::Debit, $amount, $before, $after,
+        LedgerEntryId::generate(),
+        TransferId::generate(),
+        AccountId::generate(),
+        EntryType::Debit,
+        $amount,
+        $before,
+        $after,
     );
     expect($entry->entryType)->toBe(EntryType::Debit)
         ->and($entry->amount->amount->toFloat())->toBe(40.0)

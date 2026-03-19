@@ -22,7 +22,8 @@ final class CachingFxRateService
         private readonly FxRateRepository $fxRateRepository,
         private readonly LoggerInterface $logger,
         private readonly int $cacheTtl,
-    ) {}
+    ) {
+    }
 
     public function getRate(CurrencyCode $from, CurrencyCode $to): FxRate
     {

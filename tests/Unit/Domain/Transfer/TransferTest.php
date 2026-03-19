@@ -13,13 +13,20 @@ use App\Domain\User\UserId;
 function makeTransfer(): Transfer
 {
     return Transfer::initiate(
-        TransferId::generate(), AccountId::generate(), AccountId::generate(),
+        TransferId::generate(),
+        AccountId::generate(),
+        AccountId::generate(),
         new Money('100.00', new CurrencyCode('USD')),
-        'key-' . uniqid(), UserId::generate(), '127.0.0.1', 'test'
+        'key-' . uniqid(),
+        UserId::generate(),
+        '127.0.0.1',
+        'test'
     );
 }
 
-test('transfer created with pending status', fn () =>
+test(
+    'transfer created with pending status',
+    fn () =>
     expect(makeTransfer()->status)->toBe(TransferStatus::Pending)
 );
 test('pending transitions to processing', function (): void {
@@ -35,7 +42,10 @@ test('processing transitions to completed', function (): void {
 });
 test('pending cannot go directly to completed', function (): void {
     expect(fn () => makeTransfer()->complete(
-        new Money('100.00', new CurrencyCode('USD')), new Money('91.50', new CurrencyCode('EUR')), '0.915', 'stub'
+        new Money('100.00', new CurrencyCode('USD')),
+        new Money('91.50', new CurrencyCode('EUR')),
+        '0.915',
+        'stub'
     ))->toThrow(\DomainException::class);
 });
 test('transfer can fail with reason', function (): void {

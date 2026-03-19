@@ -6,7 +6,7 @@ namespace App\Domain\User;
 
 use App\Domain\Shared\ValueObject\Uuid;
 
-readonly final class UserId
+final readonly class UserId
 {
     public function __construct(public readonly string $value)
     {

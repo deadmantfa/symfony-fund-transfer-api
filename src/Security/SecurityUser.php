@@ -10,7 +10,9 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    public function __construct(public readonly User $user) {}
+    public function __construct(public readonly User $user)
+    {
+    }
 
     public function getRoles(): array
     {
@@ -28,5 +30,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     #[\Deprecated]
-    public function eraseCredentials(): void {}
+    public function eraseCredentials(): void
+    {
+    }
 }

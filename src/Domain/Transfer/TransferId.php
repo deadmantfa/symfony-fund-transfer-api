@@ -6,7 +6,7 @@ namespace App\Domain\Transfer;
 
 use App\Domain\Shared\ValueObject\Uuid;
 
-readonly final class TransferId
+final readonly class TransferId
 {
     public function __construct(public readonly string $value)
     {

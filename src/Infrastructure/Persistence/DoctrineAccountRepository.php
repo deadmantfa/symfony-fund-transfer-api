@@ -10,6 +10,7 @@ use App\Domain\Account\AccountRepository;
 use App\Domain\Account\AccountStatus;
 use App\Domain\User\UserId;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class DoctrineAccountRepository implements AccountRepository
 {
@@ -50,25 +51,33 @@ final class DoctrineAccountRepository implements AccountRepository
 
     public function save(Account $account): void
     {
-        $this->connection->executeStatement(
-            'INSERT INTO accounts (id, user_id, currency, balance, name, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT (id) DO UPDATE SET
-                balance = EXCLUDED.balance,
-                name = EXCLUDED.name,
-                status = EXCLUDED.status,
-                updated_at = EXCLUDED.updated_at',
-            [
-                (string) $account->id,
-                (string) $account->userId,
-                (string) $account->currency,
-                (string) $account->balance->amount,
-                $account->name,
-                $account->status->value,
-                $account->createdAt->format('Y-m-d H:i:s'),
-                $account->updatedAt->format('Y-m-d H:i:s'),
-            ],
-        );
+        try {
+            $this->connection->executeStatement(
+                'INSERT INTO accounts (id, user_id, currency, balance, name, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT (id) DO UPDATE SET
+                    balance = EXCLUDED.balance,
+                    name = EXCLUDED.name,
+                    status = EXCLUDED.status,
+                    updated_at = EXCLUDED.updated_at',
+                [
+                    (string) $account->id,
+                    (string) $account->userId,
+                    (string) $account->currency,
+                    (string) $account->balance->amount,
+                    $account->name,
+                    $account->status->value,
+                    $account->createdAt->format('Y-m-d H:i:s'),
+                    $account->updatedAt->format('Y-m-d H:i:s'),
+                ],
+            );
+        } catch (UniqueConstraintViolationException $e) {
+            throw new \DomainException(
+                "User already has a {$account->currency} account.",
+                0,
+                $e,
+            );
+        }
     }
 
     public function nextIdentity(): AccountId

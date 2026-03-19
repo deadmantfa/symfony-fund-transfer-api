@@ -6,7 +6,7 @@ namespace App\Domain\LedgerEntry;
 
 use App\Domain\Shared\ValueObject\Uuid;
 
-readonly final class LedgerEntryId
+final readonly class LedgerEntryId
 {
     public function __construct(public readonly string $value)
     {

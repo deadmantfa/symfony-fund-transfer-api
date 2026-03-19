@@ -6,7 +6,7 @@ namespace App\Domain\FxRate;
 
 use App\Domain\Shared\ValueObject\Uuid;
 
-readonly final class FxRateId
+final readonly class FxRateId
 {
     public function __construct(public readonly string $value)
     {

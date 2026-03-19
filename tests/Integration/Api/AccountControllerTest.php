@@ -132,5 +132,43 @@ final class AccountControllerTest extends WebTestCase
         // User B tries to GET user A's account
         $this->client->request('GET', "/api/v1/accounts/{$accountId}", [], [], ['HTTP_AUTHORIZATION' => "Bearer {$tokenB}"]);
         $this->assertResponseStatusCodeSame(403);
+
+        // User B tries to PATCH user A's account
+        $this->client->request(
+            'PATCH',
+            "/api/v1/accounts/{$accountId}",
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => "Bearer {$tokenB}"],
+            (string) json_encode(['name' => 'Hacked']),
+        );
+        $this->assertResponseStatusCodeSame(403);
+
+        // User B tries to DELETE user A's account
+        $this->client->request('DELETE', "/api/v1/accounts/{$accountId}", [], [], ['HTTP_AUTHORIZATION' => "Bearer {$tokenB}"]);
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function test_close_account_with_nonzero_balance_returns_409(): void
+    {
+        $this->client->request(
+            'POST',
+            '/api/v1/accounts',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => "Bearer {$this->token}"],
+            (string) json_encode(['currency' => 'AUD', 'name' => 'My AUD']),
+        );
+        /** @var array{data: array{id: string}} $body */
+        $body      = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $accountId = $body['data']['id'];
+
+        // Artificially fund the account to simulate a non-zero balance
+        /** @var \Doctrine\DBAL\Connection $conn */
+        $conn = $this->client->getContainer()->get('doctrine.dbal.default_connection');
+        $conn->executeStatement('UPDATE accounts SET balance = 100 WHERE id = ?', [$accountId]);
+
+        $this->client->request('DELETE', "/api/v1/accounts/{$accountId}", [], [], ['HTTP_AUTHORIZATION' => "Bearer {$this->token}"]);
+        $this->assertResponseStatusCodeSame(409);
     }
 }

@@ -40,7 +40,11 @@ test('registers a new user with hashed password', function (): void {
 
 test('throws on duplicate email', function (): void {
     $existingUser = User::register(
-        UserId::generate(), 'alice@example.com', 'Alice', 'Smith', 'hash',
+        UserId::generate(),
+        'alice@example.com',
+        'Alice',
+        'Smith',
+        'hash',
     );
 
     /** @var UserRepository $repo */

@@ -24,21 +24,40 @@ final class User
         public private(set) ?DateTimeImmutable $termsAcceptedAt,
         public private(set) readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed>|null $address
      */
     public static function register(
-        UserId $id, string $email, string $firstName, string $lastName,
-        string $passwordHash, ?string $phoneNumber = null,
-        ?DateTimeImmutable $dateOfBirth = null, ?array $address = null,
+        UserId $id,
+        string $email,
+        string $firstName,
+        string $lastName,
+        string $passwordHash,
+        ?string $phoneNumber = null,
+        ?DateTimeImmutable $dateOfBirth = null,
+        ?array $address = null,
     ): self {
         $now = new DateTimeImmutable();
 
-        return new self($id, $email, $firstName, $lastName, $passwordHash,
-            $phoneNumber, $dateOfBirth, $address,
-            KycStatus::Unverified, UserStatus::Active, null, null, $now, $now);
+        return new self(
+            $id,
+            $email,
+            $firstName,
+            $lastName,
+            $passwordHash,
+            $phoneNumber,
+            $dateOfBirth,
+            $address,
+            KycStatus::Unverified,
+            UserStatus::Active,
+            null,
+            null,
+            $now,
+            $now
+        );
     }
 
     /** @param array<string, mixed> $row */
@@ -141,8 +160,10 @@ final class User
      * @param array<string, mixed>|null $address
      */
     public function updateProfile(
-        ?string $firstName = null, ?string $lastName = null,
-        ?string $phoneNumber = null, ?array $address = null,
+        ?string $firstName = null,
+        ?string $lastName = null,
+        ?string $phoneNumber = null,
+        ?array $address = null,
     ): void {
         if ($firstName !== null) {
             $this->firstName = $firstName;

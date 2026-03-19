@@ -29,18 +29,39 @@ final class Transfer
         public private(set) ?string $failureReason,
         public private(set) readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
-    ) {}
+    ) {
+    }
 
     public static function initiate(
-        TransferId $id, AccountId $fromAccountId, AccountId $toAccountId,
-        Money $amount, string $idempotencyKey, UserId $initiatedByUserId,
-        string $ipAddress, string $userAgent,
+        TransferId $id,
+        AccountId $fromAccountId,
+        AccountId $toAccountId,
+        Money $amount,
+        string $idempotencyKey,
+        UserId $initiatedByUserId,
+        string $ipAddress,
+        string $userAgent,
     ): self {
         $now = new DateTimeImmutable();
 
-        return new self($id, $fromAccountId, $toAccountId, $amount, $idempotencyKey,
-            $initiatedByUserId, $ipAddress, $userAgent,
-            TransferStatus::Pending, null, null, null, null, null, $now, $now);
+        return new self(
+            $id,
+            $fromAccountId,
+            $toAccountId,
+            $amount,
+            $idempotencyKey,
+            $initiatedByUserId,
+            $ipAddress,
+            $userAgent,
+            TransferStatus::Pending,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $now,
+            $now
+        );
     }
 
     /** @param array<string, mixed> $row */

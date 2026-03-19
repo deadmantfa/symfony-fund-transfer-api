@@ -7,7 +7,7 @@ namespace App\Domain\Shared\ValueObject;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 
-readonly final class Money
+final readonly class Money
 {
     public readonly BigDecimal $amount;
 

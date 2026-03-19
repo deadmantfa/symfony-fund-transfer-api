@@ -13,7 +13,9 @@ use Doctrine\DBAL\Connection;
 
 final class DoctrineFxRateRepository implements FxRateRepository
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private readonly Connection $connection)
+    {
+    }
 
     public function findLatest(CurrencyCode $from, CurrencyCode $to): ?FxRate
     {

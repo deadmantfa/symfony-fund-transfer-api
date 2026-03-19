@@ -43,27 +43,77 @@ final class Transfer
             TransferStatus::Pending, null, null, null, null, null, $now, $now);
     }
 
+    /** @param array<string, mixed> $row */
     public static function fromRow(array $row): self
     {
+        assert(is_string($row['id']));
+        assert(is_string($row['from_account_id']));
+        assert(is_string($row['to_account_id']));
+        assert(is_string($row['currency']));
+        assert(is_string($row['amount']) || is_numeric($row['amount']));
+        assert(is_string($row['idempotency_key']));
+        assert(is_string($row['initiated_by_user_id']));
+        assert(is_string($row['status']));
+        assert(is_string($row['created_at']));
+        assert(is_string($row['updated_at']));
+
         $currency = new CurrencyCode($row['currency']);
+
+        $fromAmount = null;
+        if (isset($row['from_amount'], $row['from_currency'])) {
+            assert(is_string($row['from_amount']) || is_numeric($row['from_amount']));
+            assert(is_string($row['from_currency']));
+            $fromAmount = new Money((string) $row['from_amount'], new CurrencyCode($row['from_currency']));
+        }
+
+        $toAmount = null;
+        if (isset($row['to_amount'], $row['to_currency'])) {
+            assert(is_string($row['to_amount']) || is_numeric($row['to_amount']));
+            assert(is_string($row['to_currency']));
+            $toAmount = new Money((string) $row['to_amount'], new CurrencyCode($row['to_currency']));
+        }
+
+        $fxRate = null;
+        if (isset($row['fx_rate'])) {
+            assert(is_string($row['fx_rate']));
+            $fxRate = $row['fx_rate'];
+        }
+        $fxRateProvider = null;
+        if (isset($row['fx_rate_provider'])) {
+            assert(is_string($row['fx_rate_provider']));
+            $fxRateProvider = $row['fx_rate_provider'];
+        }
+        $failureReason = null;
+        if (isset($row['failure_reason'])) {
+            assert(is_string($row['failure_reason']));
+            $failureReason = $row['failure_reason'];
+        }
+        $ipAddress = '';
+        if (isset($row['ip_address'])) {
+            assert(is_string($row['ip_address']));
+            $ipAddress = $row['ip_address'];
+        }
+        $userAgent = '';
+        if (isset($row['user_agent'])) {
+            assert(is_string($row['user_agent']));
+            $userAgent = $row['user_agent'];
+        }
 
         return new self(
             id: new TransferId($row['id']),
             fromAccountId: new AccountId($row['from_account_id']),
             toAccountId: new AccountId($row['to_account_id']),
-            amount: new Money($row['amount'], $currency),
+            amount: new Money((string) $row['amount'], $currency),
             idempotencyKey: $row['idempotency_key'],
             initiatedByUserId: new UserId($row['initiated_by_user_id']),
-            ipAddress: $row['ip_address'] ?? '',
-            userAgent: $row['user_agent'] ?? '',
+            ipAddress: $ipAddress,
+            userAgent: $userAgent,
             status: TransferStatus::from($row['status']),
-            fromAmount: isset($row['from_amount'], $row['from_currency'])
-                ? new Money($row['from_amount'], new CurrencyCode($row['from_currency'])) : null,
-            toAmount: isset($row['to_amount'], $row['to_currency'])
-                ? new Money($row['to_amount'], new CurrencyCode($row['to_currency'])) : null,
-            fxRate: $row['fx_rate'] ?? null,
-            fxRateProvider: $row['fx_rate_provider'] ?? null,
-            failureReason: $row['failure_reason'] ?? null,
+            fromAmount: $fromAmount,
+            toAmount: $toAmount,
+            fxRate: $fxRate,
+            fxRateProvider: $fxRateProvider,
+            failureReason: $failureReason,
             createdAt: new DateTimeImmutable($row['created_at']),
             updatedAt: new DateTimeImmutable($row['updated_at']),
         );

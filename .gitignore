@@ -11,8 +11,11 @@ docs/reports/*.xml
 docs/reports/*.html
 /.php-cs-fixer.cache
 /.phpunit.cache/
-/docs/.DS_Store
+*.bak
+.DS_Store
 
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
+config/jwt/private.pem
+config/jwt/public.pem

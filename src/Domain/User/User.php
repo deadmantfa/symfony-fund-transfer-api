@@ -16,6 +16,7 @@ final class User
         public private(set) string $passwordHash,
         public private(set) ?string $phoneNumber,
         public private(set) ?DateTimeImmutable $dateOfBirth,
+        /** @var array<string, mixed>|null */
         public private(set) ?array $address,
         public private(set) KycStatus $kycStatus,
         public private(set) UserStatus $status,
@@ -25,6 +26,9 @@ final class User
         public private(set) DateTimeImmutable $updatedAt,
     ) {}
 
+    /**
+     * @param array<string, mixed>|null $address
+     */
     public static function register(
         UserId $id, string $email, string $firstName, string $lastName,
         string $passwordHash, ?string $phoneNumber = null,
@@ -37,21 +41,70 @@ final class User
             KycStatus::Unverified, UserStatus::Active, null, null, $now, $now);
     }
 
+    /** @param array<string, mixed> $row */
     public static function fromRow(array $row): self
     {
+        assert(is_string($row['id']));
+        assert(is_string($row['email']));
+        assert(is_string($row['first_name']));
+        assert(is_string($row['last_name']));
+        assert(is_string($row['password_hash']));
+        assert(is_string($row['kyc_status']));
+        assert(is_string($row['status']));
+        assert(is_string($row['created_at']));
+        assert(is_string($row['updated_at']));
+
+        $rawAddress = $row['address'] ?? null;
+        /** @var array<string, mixed>|null $address */
+        $address = null;
+        if ($rawAddress !== null) {
+            if (is_array($rawAddress)) {
+                $address = $rawAddress;
+            } else {
+                assert(is_string($rawAddress));
+                /** @var array<string, mixed>|null $decoded */
+                $decoded = json_decode($rawAddress, true);
+                $address = $decoded;
+            }
+        }
+
+        $phoneNumber = null;
+        if (isset($row['phone_number'])) {
+            assert(is_string($row['phone_number']));
+            $phoneNumber = $row['phone_number'];
+        }
+
+        $dateOfBirth = null;
+        if (isset($row['date_of_birth'])) {
+            assert(is_string($row['date_of_birth']));
+            $dateOfBirth = new DateTimeImmutable($row['date_of_birth']);
+        }
+
+        $emailVerifiedAt = null;
+        if (isset($row['email_verified_at'])) {
+            assert(is_string($row['email_verified_at']));
+            $emailVerifiedAt = new DateTimeImmutable($row['email_verified_at']);
+        }
+
+        $termsAcceptedAt = null;
+        if (isset($row['terms_accepted_at'])) {
+            assert(is_string($row['terms_accepted_at']));
+            $termsAcceptedAt = new DateTimeImmutable($row['terms_accepted_at']);
+        }
+
         return new self(
             id: new UserId($row['id']),
             email: $row['email'],
             firstName: $row['first_name'],
             lastName: $row['last_name'],
             passwordHash: $row['password_hash'],
-            phoneNumber: $row['phone_number'] ?? null,
-            dateOfBirth: isset($row['date_of_birth']) ? new DateTimeImmutable($row['date_of_birth']) : null,
-            address: isset($row['address']) ? (is_array($row['address']) ? $row['address'] : json_decode($row['address'], true)) : null,
+            phoneNumber: $phoneNumber,
+            dateOfBirth: $dateOfBirth,
+            address: $address,
             kycStatus: KycStatus::from($row['kyc_status']),
             status: UserStatus::from($row['status']),
-            emailVerifiedAt: isset($row['email_verified_at']) ? new DateTimeImmutable($row['email_verified_at']) : null,
-            termsAcceptedAt: isset($row['terms_accepted_at']) ? new DateTimeImmutable($row['terms_accepted_at']) : null,
+            emailVerifiedAt: $emailVerifiedAt,
+            termsAcceptedAt: $termsAcceptedAt,
             createdAt: new DateTimeImmutable($row['created_at']),
             updatedAt: new DateTimeImmutable($row['updated_at']),
         );
@@ -84,6 +137,9 @@ final class User
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    /**
+     * @param array<string, mixed>|null $address
+     */
     public function updateProfile(
         ?string $firstName = null, ?string $lastName = null,
         ?string $phoneNumber = null, ?array $address = null,

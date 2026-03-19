@@ -30,8 +30,18 @@ final class Account
             new Money('0.00000000', $currency), AccountStatus::Active, $now, $now);
     }
 
+    /** @param array<string, mixed> $row */
     public static function fromRow(array $row): self
     {
+        assert(is_string($row['id']));
+        assert(is_string($row['user_id']));
+        assert(is_string($row['currency']));
+        assert(is_string($row['name']));
+        assert(is_string($row['balance']) || is_numeric($row['balance']));
+        assert(is_string($row['status']));
+        assert(is_string($row['created_at']));
+        assert(is_string($row['updated_at']));
+
         $currency = new CurrencyCode($row['currency']);
 
         return new self(
@@ -39,7 +49,7 @@ final class Account
             userId: new UserId($row['user_id']),
             currency: $currency,
             name: $row['name'],
-            balance: new Money($row['balance'], $currency),
+            balance: new Money((string) $row['balance'], $currency),
             status: AccountStatus::from($row['status']),
             createdAt: new DateTimeImmutable($row['created_at']),
             updatedAt: new DateTimeImmutable($row['updated_at']),

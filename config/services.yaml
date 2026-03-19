@@ -36,6 +36,13 @@ services:
     App\Domain\FxRate\FxRateRepository:
         alias: App\Infrastructure\Persistence\DoctrineFxRateRepository
 
+    App\Domain\User\UserRepository:
+        alias: App\Infrastructure\Persistence\DoctrineUserRepository
+
+    App\Controller\Api\V1\AuthController:
+        arguments:
+            $registerLimiter: '@limiter.register_limiter'
+
 when@test:
     services:
         App\Infrastructure\FxRate\StubFxRateProvider: ~

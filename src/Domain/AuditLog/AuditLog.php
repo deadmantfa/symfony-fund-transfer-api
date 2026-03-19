@@ -16,13 +16,19 @@ final readonly class AuditLog
         public readonly string $entityId,
         public readonly string $action,
         public readonly ?UserId $actorId,
+        /** @var array<string, mixed>|null */
         public readonly ?array $oldValue,
+        /** @var array<string, mixed>|null */
         public readonly ?array $newValue,
         public readonly ?string $ipAddress,
         public readonly ?string $userAgent,
         public readonly DateTimeImmutable $createdAt,
     ) {}
 
+    /**
+     * @param array<string, mixed>|null $oldValue
+     * @param array<string, mixed>|null $newValue
+     */
     public static function record(
         AuditLogId $id, string $entityType, string $entityId, string $action,
         ?UserId $actorId = null, ?array $oldValue = null, ?array $newValue = null,

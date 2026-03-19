@@ -1,0 +1,26 @@
+framework:
+    rate_limiter:
+        login_limiter:
+            policy: sliding_window
+            limit: '%env(int:RATE_LIMIT_LOGIN)%'
+            interval: '15 minutes'
+
+        register_limiter:
+            policy: sliding_window
+            limit: '%env(int:RATE_LIMIT_REGISTER)%'
+            interval: '1 hour'
+
+        transfer_limiter:
+            policy: sliding_window
+            limit: '%env(int:RATE_LIMIT_TRANSFER)%'
+            interval: '1 minute'
+
+when@test:
+    framework:
+        rate_limiter:
+            login_limiter:
+                policy: no_limit
+            register_limiter:
+                policy: no_limit
+            transfer_limiter:
+                policy: no_limit

@@ -1,0 +1,19 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    auto_setup: false
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+
+        routing: []
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'in-memory://'

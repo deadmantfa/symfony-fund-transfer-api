@@ -1,0 +1,35 @@
+deptrac:
+  paths:
+    - ./src
+  layers:
+    - name: Controller
+      collectors:
+        - type: namespace
+          value: App\Controller
+    - name: Application
+      collectors:
+        - type: namespace
+          value: App\Application
+    - name: Domain
+      collectors:
+        - type: namespace
+          value: App\Domain
+    - name: Infrastructure
+      collectors:
+        - type: namespace
+          value: App\Infrastructure
+    - name: Security
+      collectors:
+        - type: namespace
+          value: App\Security
+  ruleset:
+    Controller:
+      - Application
+      - Domain
+    Application:
+      - Domain
+    Infrastructure:
+      - Domain
+    Security:
+      - Domain
+    Domain: ~

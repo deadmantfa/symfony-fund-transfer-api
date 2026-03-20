@@ -41,8 +41,10 @@ final class TransferController extends AbstractController
         /** @var array{from_account_id?: string, to_account_id?: string, amount?: string, currency?: string, note?: string} $data */
         $data = json_decode($request->getContent(), true) ?? [];
 
-        /** @var SecurityUser $securityUser */
         $securityUser = $this->getUser();
+        if (!$securityUser instanceof SecurityUser) {
+            return new JsonResponse(['type' => 'unauthorized', 'title' => 'Authentication required'], Response::HTTP_UNAUTHORIZED);
+        }
 
         try {
             $transfer = ($this->initiateTransferHandler)(new InitiateTransferCommand(

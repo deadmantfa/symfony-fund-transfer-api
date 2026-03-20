@@ -139,6 +139,7 @@ final class ProcessTransferHandler
                 entityType: 'Transfer',
                 entityId: (string) $transfer->id,
                 action: 'failed',
+                actorId: $transfer->initiatedByUserId,
                 newValue: ['reason' => $reason, 'error' => $e->getMessage()],
             ));
         } catch (FxRateUnavailableException $e) {

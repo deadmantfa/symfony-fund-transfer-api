@@ -51,8 +51,32 @@ final class AuthController
             );
         }
 
+        /** @var array{email?: string, password?: string, first_name?: string, last_name?: string}|null $decoded */
+        $decoded = json_decode($request->getContent(), true);
+
+        if ($decoded === null && $request->getContent() !== '') {
+            return new JsonResponse(
+                ['type' => 'https://tools.ietf.org/html/rfc9110#section-15.5.21', 'title' => 'Unprocessable Content', 'status' => 422, 'detail' => 'Request body must be valid JSON.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         /** @var array{email?: string, password?: string, first_name?: string, last_name?: string} $data */
-        $data = json_decode($request->getContent(), true) ?? [];
+        $data = $decoded ?? [];
+
+        $missing = [];
+        foreach (['email', 'password', 'first_name', 'last_name'] as $field) {
+            if (!isset($data[$field]) || $data[$field] === '') {
+                $missing[] = $field;
+            }
+        }
+
+        if ($missing !== []) {
+            return new JsonResponse(
+                ['type' => 'https://tools.ietf.org/html/rfc9110#section-15.5.21', 'title' => 'Unprocessable Content', 'status' => 422, 'detail' => 'Missing required fields: ' . implode(', ', $missing)],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
 
         try {
             $user = ($this->registerUserHandler)(new RegisterUserCommand(

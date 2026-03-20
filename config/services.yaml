@@ -45,6 +45,16 @@ services:
     App\Domain\LedgerEntry\LedgerEntryRepository:
         alias: App\Infrastructure\Persistence\DoctrineLedgerEntryRepository
 
+    App\Domain\Transfer\TransferRepository:
+        alias: App\Infrastructure\Persistence\DoctrineTransferRepository
+
+    App\Domain\AuditLog\AuditLogRepository:
+        alias: App\Infrastructure\Persistence\DoctrineAuditLogRepository
+
+    App\Application\Shared\IdempotencyService:
+        arguments:
+            $ttl: 86400
+
     App\Controller\Api\V1\AuthController:
         arguments:
             $registerLimiter: '@limiter.register_limiter'

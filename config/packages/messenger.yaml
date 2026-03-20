@@ -7,10 +7,16 @@ framework:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
                     auto_setup: false
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 5
+                    max_delay: 15000
             failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 
-        routing: []
+        routing:
+            'App\Application\Transfer\ProcessTransferCommand': async
 
 when@test:
     framework:

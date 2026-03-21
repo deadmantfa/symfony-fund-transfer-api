@@ -23,7 +23,8 @@ final class InitiateTransferHandler
         private readonly TransferRepository $transferRepository,
         private readonly IdempotencyService $idempotencyService,
         private readonly MessageBusInterface $messageBus,
-    ) {}
+    ) {
+    }
 
     public function __invoke(InitiateTransferCommand $command): Transfer
     {
@@ -57,6 +58,10 @@ final class InitiateTransferHandler
             throw new \DomainException('One or both accounts not found.');
         }
 
+        if ($fromAccountId->equals($toAccountId)) {
+            throw new \DomainException('Cannot transfer to the same account.');
+        }
+
         if (!$fromAccount->isOwnedBy($userId)) {
             throw new \DomainException('You do not own the source account.');
         }
@@ -71,17 +76,26 @@ final class InitiateTransferHandler
 
         // 4. Server-side dedup
         if ($this->transferRepository->existsDuplicate(
-            $fromAccountId, $toAccountId, $command->amount, $command->currency, 60
+            $fromAccountId,
+            $toAccountId,
+            $command->amount,
+            $command->currency,
+            60
         )) {
             throw new \DomainException('Duplicate transfer detected. Please wait before retrying.');
         }
 
         // 5. Create pending transfer
+        $amount = new Money($command->amount, new CurrencyCode($command->currency));
+        if (!$amount->isPositive()) {
+            throw new \DomainException('Transfer amount must be positive.');
+        }
+
         $transfer = Transfer::initiate(
             id: $this->transferRepository->nextIdentity(),
             fromAccountId: $fromAccountId,
             toAccountId: $toAccountId,
-            amount: new Money($command->amount, new CurrencyCode($command->currency)),
+            amount: $amount,
             idempotencyKey: $command->idempotencyKey,
             initiatedByUserId: $userId,
             ipAddress: $command->ipAddress,

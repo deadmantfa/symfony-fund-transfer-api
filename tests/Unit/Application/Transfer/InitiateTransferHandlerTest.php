@@ -136,3 +136,78 @@ test('blocks transfer if KYC not verified', function (): void {
         userAgent: 'test',
     )))->toThrow(\DomainException::class, 'KYC');
 });
+
+test('blocks transfer to same account', function (): void {
+    $userId = UserId::generate();
+    $user   = makeVerifiedUser();
+    $acct   = makeActiveAccount($userId);
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturn($acct);
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $transferRepo->method('nextIdentity')->willReturn(TransferId::generate());
+
+    $idempotency = new IdempotencyService(new ArrayAdapter(), 86400);
+
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+
+    expect(fn () => $handler(new InitiateTransferCommand(
+        userId: (string) $userId,
+        fromAccountId: (string) $acct->id,
+        toAccountId: (string) $acct->id,   // same account
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'self-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(\DomainException::class, 'same account');
+});
+
+test('blocks transfer with zero or negative amount', function (): void {
+    $userId   = UserId::generate();
+    $user     = makeVerifiedUser();
+    $fromAcct = makeActiveAccount($userId);
+    $toAcct   = makeActiveAccount(UserId::generate());
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturnCallback(
+        fn (AccountId $id) => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+    );
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $transferRepo->method('nextIdentity')->willReturn(TransferId::generate());
+
+    $idempotency = new IdempotencyService(new ArrayAdapter(), 86400);
+
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+
+    expect(fn () => $handler(new InitiateTransferCommand(
+        userId: (string) $userId,
+        fromAccountId: (string) $fromAcct->id,
+        toAccountId: (string) $toAcct->id,
+        amount: '0.00',
+        currency: 'USD',
+        idempotencyKey: 'zero-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(\DomainException::class, 'positive');
+});

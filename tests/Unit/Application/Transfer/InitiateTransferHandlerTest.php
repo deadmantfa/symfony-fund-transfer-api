@@ -82,8 +82,9 @@ test('initiates transfer and returns pending transfer', function (): void {
 
 test('throws DuplicateIdempotencyKeyException for duplicate key', function (): void {
     $idempotency = new IdempotencyService(new ArrayAdapter(), 86400);
+    $userId      = (string) UserId::generate();
     $key         = 'dup-key';
-    $idempotency->store($key, ['transfer_id' => 'existing-id', 'status' => 'pending']);
+    $idempotency->store("{$userId}.{$key}", ['transfer_id' => 'existing-id', 'status' => 'pending']);
 
     /** @var UserRepository $userRepo */
     $userRepo = $this->createStub(UserRepository::class);
@@ -97,7 +98,7 @@ test('throws DuplicateIdempotencyKeyException for duplicate key', function (): v
     $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
 
     expect(fn () => $handler(new InitiateTransferCommand(
-        userId: (string) UserId::generate(),
+        userId: $userId,
         fromAccountId: (string) AccountId::generate(),
         toAccountId: (string) AccountId::generate(),
         amount: '10.00',

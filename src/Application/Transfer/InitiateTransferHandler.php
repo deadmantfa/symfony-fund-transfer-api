@@ -28,15 +28,17 @@ final class InitiateTransferHandler
 
     public function __invoke(InitiateTransferCommand $command): Transfer
     {
-        // 1. Check idempotency key (Redis)
-        if ($this->idempotencyService->exists($command->idempotencyKey)) {
+        // 2. Load and validate user
+        $userId = new UserId($command->userId);
+
+        // 1. Check idempotency key (Redis) — scoped to user to prevent cross-user key collision
+        $scopedKey = $command->userId . '.' . $command->idempotencyKey;
+        if ($this->idempotencyService->exists($scopedKey)) {
             throw new DuplicateIdempotencyKeyException(
-                $this->idempotencyService->get($command->idempotencyKey) ?? []
+                $this->idempotencyService->get($scopedKey) ?? []
             );
         }
 
-        // 2. Load and validate user
-        $userId = new UserId($command->userId);
         $user   = $this->userRepository->findById($userId);
 
         if ($user === null) {
@@ -105,7 +107,7 @@ final class InitiateTransferHandler
         $this->transferRepository->save($transfer);
 
         // 6. Cache idempotency key
-        $this->idempotencyService->store($command->idempotencyKey, [
+        $this->idempotencyService->store($scopedKey, [
             'transfer_id' => (string) $transfer->id,
             'status'      => $transfer->status->value,
         ]);

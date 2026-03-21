@@ -25,7 +25,8 @@ final class ProcessTransferHandler
         private readonly LedgerEntryRepository $ledgerEntryRepository,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly CachingFxRateService $fxRateService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(ProcessTransferCommand $command): void
     {
@@ -67,7 +68,7 @@ final class ProcessTransferHandler
             // 4. Calculate amounts
             // transfer->amount is in fromAccount currency
             $debitAmount  = $transfer->amount;
-            $creditAmount = $debitAmount->multiply((string) $fxRate->rate);
+            $creditAmount = $debitAmount->convertTo($toAccount->currency, (string) $fxRate->rate);
 
             // 5. Debit source
             $balanceBefore = $fromAccount->balance;

@@ -41,6 +41,12 @@ final readonly class Money
         return new self($result, $this->currency);
     }
 
+    public function convertTo(CurrencyCode $targetCurrency, string|BigDecimal $rate): self
+    {
+        $result = $this->amount->multipliedBy($rate)->toScale(8, RoundingMode::HalfUp);
+        return new self($result, $targetCurrency);
+    }
+
     public function isPositive(): bool
     {
         return $this->amount->isGreaterThan(BigDecimal::zero());

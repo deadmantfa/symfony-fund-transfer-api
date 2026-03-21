@@ -42,10 +42,18 @@ function makePendingTransfer(string $fromId, string $toId, string $amount = '50.
 function makeCachingFxService(): CachingFxRateService
 {
     /** @var FxRateRepository $fxRepo */
-    $fxRepo = (new class implements FxRateRepository {
-        public function findLatest(\App\Domain\Shared\ValueObject\CurrencyCode $from, \App\Domain\Shared\ValueObject\CurrencyCode $to): ?\App\Domain\FxRate\FxRate { return null; }
-        public function save(\App\Domain\FxRate\FxRate $rate): void {}
-        public function nextIdentity(): \App\Domain\FxRate\FxRateId { return \App\Domain\FxRate\FxRateId::generate(); }
+    $fxRepo = (new class () implements FxRateRepository {
+        public function findLatest(\App\Domain\Shared\ValueObject\CurrencyCode $from, \App\Domain\Shared\ValueObject\CurrencyCode $to): ?\App\Domain\FxRate\FxRate
+        {
+            return null;
+        }
+        public function save(\App\Domain\FxRate\FxRate $rate): void
+        {
+        }
+        public function nextIdentity(): \App\Domain\FxRate\FxRateId
+        {
+            return \App\Domain\FxRate\FxRateId::generate();
+        }
     });
 
     return new CachingFxRateService(
@@ -106,6 +114,53 @@ test('processes transfer successfully: debits source, credits destination, marks
     expect((string) $fromAccount->balance->amount)->toBe('150.00000000');
     // multiply with rate 1.0000000000 gives 10 decimal places via BigDecimal
     expect($toAccount->balance->amount->toFloat())->toBe(50.0);
+});
+
+test('processes cross-currency transfer: credit destination in target currency', function (): void {
+    $fromIdStr = (string) AccountId::generate();
+    $toIdStr   = (string) AccountId::generate();
+
+    $transfer = makePendingTransfer($fromIdStr, $toIdStr, '100.00'); // USD amount
+
+    $fromAccount = Account::open(new AccountId($fromIdStr), UserId::generate(), new CurrencyCode('USD'), 'From USD');
+    $fromAccount->credit(new Money('200.00', new CurrencyCode('USD')));
+
+    $toAccount = Account::open(new AccountId($toIdStr), UserId::generate(), new CurrencyCode('EUR'), 'To EUR');
+
+    /** @var Connection&\PHPUnit\Framework\MockObject\MockObject $conn */
+    $conn = $this->createMock(Connection::class);
+    $conn->expects($this->once())->method('beginTransaction');
+    $conn->expects($this->once())->method('commit');
+
+    /** @var TransferRepository&\PHPUnit\Framework\MockObject\MockObject $transferRepo */
+    $transferRepo = $this->createMock(TransferRepository::class);
+    $transferRepo->method('findByIdForUpdate')->willReturn($transfer);
+    $transferRepo->expects($this->exactly(2))->method('save');
+
+    /** @var AccountRepository&\PHPUnit\Framework\MockObject\MockObject $accountRepo */
+    $accountRepo = $this->createMock(AccountRepository::class);
+    $accountRepo->method('findByIdForUpdate')->willReturnCallback(
+        fn (AccountId $id) => (string) $id === $fromIdStr ? $fromAccount : $toAccount
+    );
+    $accountRepo->expects($this->exactly(2))->method('save');
+
+    /** @var LedgerEntryRepository&\PHPUnit\Framework\MockObject\MockObject $ledgerRepo */
+    $ledgerRepo = $this->createMock(LedgerEntryRepository::class);
+    $ledgerRepo->method('nextIdentity')->willReturn(LedgerEntryId::generate());
+    $ledgerRepo->expects($this->exactly(2))->method('append');
+
+    /** @var AuditLogRepository&\PHPUnit\Framework\MockObject\MockObject $auditRepo */
+    $auditRepo = $this->createMock(AuditLogRepository::class);
+    $auditRepo->method('nextIdentity')->willReturn(AuditLogId::generate());
+    $auditRepo->expects($this->once())->method('append');
+
+    $handler = new ProcessTransferHandler($conn, $transferRepo, $accountRepo, $ledgerRepo, $auditRepo, makeCachingFxService());
+    $handler(new ProcessTransferCommand((string) $transfer->id));
+
+    expect($transfer->status)->toBe(TransferStatus::Completed);
+    // Destination balance must be in EUR (not USD)
+    expect($toAccount->balance->currency->value)->toBe('EUR');
+    expect($toAccount->balance->amount->isGreaterThan(\Brick\Math\BigDecimal::zero()))->toBeTrue();
 });
 
 test('fails transfer with insufficient_funds on DomainException', function (): void {

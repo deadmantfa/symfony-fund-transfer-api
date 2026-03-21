@@ -44,3 +44,17 @@ test('invalid currency code throws', function (): void {
     expect(fn () => new CurrencyCode('XX'))->toThrow(\InvalidArgumentException::class);
     expect(fn () => new CurrencyCode('usd'))->toThrow(\InvalidArgumentException::class);
 });
+
+test('money convertTo changes currency and applies rate', function (): void {
+    $usd    = new Money('100.00', new CurrencyCode('USD'));
+    $eur    = $usd->convertTo(new CurrencyCode('EUR'), '0.92');
+    expect($eur->currency->value)->toBe('EUR')
+        ->and($eur->amount->toFloat())->toBe(92.0);
+});
+
+test('money convertTo same currency equals multiply', function (): void {
+    $usd    = new Money('100.00', new CurrencyCode('USD'));
+    $result = $usd->convertTo(new CurrencyCode('USD'), '1.5');
+    expect($result->currency->value)->toBe('USD')
+        ->and($result->amount->toFloat())->toBe(150.0);
+});

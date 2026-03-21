@@ -14,6 +14,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Normalizes all exceptions to RFC 9457 Problem Details format.
  * Content-Type: application/problem+json
  * Never exposes stack traces.
+ * Priority -1: runs after Symfony Security's exception listener (priority 0),
+ * which handles AccessDeniedException/AuthenticationException and stops event
+ * propagation, so those never reach this listener.
  */
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: -1)]
 final class ExceptionListener

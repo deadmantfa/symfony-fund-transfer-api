@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Api\V1;
 
 use App\Domain\Account\AccountRepository;
+use App\Domain\Transfer\TransferRepository;
 use App\Domain\User\UserRepository;
 use App\Security\SecurityUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,6 +19,7 @@ final class UserController extends AbstractController
     public function __construct(
         private readonly UserRepository $userRepository,
         private readonly AccountRepository $accountRepository,
+        private readonly TransferRepository $transferRepository,
     ) {
     }
 
@@ -48,8 +50,22 @@ final class UserController extends AbstractController
         if (!$securityUser instanceof SecurityUser) {
             return new JsonResponse(['type' => 'unauthorized', 'title' => 'Authentication required'], Response::HTTP_UNAUTHORIZED);
         }
-        $user     = $securityUser->user;
-        $accounts = $this->accountRepository->findByUserId($user->id);
+        $user      = $securityUser->user;
+        $accounts  = $this->accountRepository->findByUserId($user->id);
+        $transfers = [];
+        foreach ($accounts as $account) {
+            foreach ($this->transferRepository->findByAccountId($account->id, null, 100) as $t) {
+                $transfers[(string) $t->id] = [
+                    'id'             => (string) $t->id,
+                    'from_account'   => (string) $t->fromAccountId,
+                    'to_account'     => (string) $t->toAccountId,
+                    'amount'         => (string) $t->amount->amount,
+                    'currency'       => (string) $t->amount->currency,
+                    'status'         => $t->status->value,
+                    'created_at'     => $t->createdAt->format(\DateTimeInterface::ATOM),
+                ];
+            }
+        }
 
         return new JsonResponse(['data' => [
             'user'      => [
@@ -66,7 +82,7 @@ final class UserController extends AbstractController
                 'name'     => $a->name,
                 'balance'  => (string) $a->balance->amount,
             ], $accounts),
-            'transfers' => [],
+            'transfers' => array_values($transfers),
         ]]);
     }
 

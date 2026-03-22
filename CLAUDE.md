@@ -8,31 +8,40 @@ This is a **Symfony PHP API** for secure fund transfers between accounts (homewo
 
 See `Homework assignment.md` for the full spec. Submission requires a public GitHub repo with `composer.json`, Docker files, and a README covering installation, time spent, and AI tools used.
 
-## Common Commands
+## Execution Environment — IMPORTANT
+
+**All commands must run inside Docker, not on the host machine.**
+The application requires PostgreSQL and Redis, which are only available inside the Docker network.
+Running `php`, `composer`, etc. directly on the host will fail or use wrong environment variables.
+
+Always prefix commands with `docker compose exec app`:
 
 ```bash
-# Install dependencies
-composer install
-
-# Start services
+# Start all services
 docker compose up -d
 
+# Install dependencies
+docker compose exec app composer install
+
 # Run database migrations
-php bin/console doctrine:migrations:migrate
+docker compose exec app php bin/console doctrine:migrations:migrate
 
 # Run all tests
-php bin/phpunit
+docker compose exec app php bin/phpunit
 
 # Run a single test class or method
-php bin/phpunit --filter TransferServiceTest
-php bin/phpunit --filter TransferServiceTest::testInsufficientFunds
+docker compose exec app php bin/phpunit --filter TransferServiceTest
+docker compose exec app php bin/phpunit --filter TransferServiceTest::testInsufficientFunds
 
 # Code style check / fix
-composer cs-check
-composer cs-fix
+docker compose exec app composer cs-check
+docker compose exec app composer cs-fix
 
 # Static analysis
-composer phpstan
+docker compose exec app composer phpstan
+
+# Open a shell in the app container
+docker compose exec app sh
 ```
 
 ## Architecture

@@ -87,7 +87,7 @@ test('initiates transfer and returns pending transfer', function (): void {
     $scopedKey = $userId . '.' . $key;
     $stored    = $idempotency->get($scopedKey);
     expect($stored)->toBeArray()
-        ->and($stored['transfer_id'])->toBe((string) $transfer->id)  // string cast must be present
+        ->and($stored['id'])->toBe((string) $transfer->id)  // matches the 202 response shape stored by the handler
         ->and($stored['status'])->toBe('pending');
 });
 

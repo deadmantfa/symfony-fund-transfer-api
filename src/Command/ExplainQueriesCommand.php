@@ -100,6 +100,7 @@ final class ExplainQueriesCommand extends Command
 
             $rows = $this->connection->fetchAllAssociative($explainSql, $entry['params']);
             foreach ($rows as $row) {
+                /** @var array<string, string> $row */
                 $lines[] = implode('', array_values($row));
             }
 

@@ -2,19 +2,26 @@
     # Enough threads to service the k6 spike (20 VUs × 3 concurrent requests + headroom).
     # Without this, the default thread count (≈ 2×CPU) is exhausted under load and
     # Caddy drops connections with "unexpected EOF" / "connection refused".
+    #
+    # Worker mode: the Symfony app boots once per thread and handles multiple requests
+    # in a loop — eliminating per-request bootstrap cost (config parsing, DI container build).
+    # Requires runtime/frankenphp-symfony and APP_RUNTIME env var.
     frankenphp {
         num_threads 32
+        worker /app/public/index.php
     }
     admin off
 }
 
 # Redirect HTTP → HTTPS (all subdomains)
-fund-transfer.local:80, db.fund-transfer.local:80, mail.fund-transfer.local:80 {
+fund-transfer.local:80, api.fund-transfer.local:80, db.fund-transfer.local:80, mail.fund-transfer.local:80 {
     redir https://{host}{uri} 308
 }
 
 # HTTPS — Caddy issues a local TLS cert via its internal CA
-fund-transfer.local {
+# Served on both the root domain and the api. subdomain for consistency with
+# the other tool subdomains (db., mail.). Both resolve to the same app.
+fund-transfer.local, api.fund-transfer.local {
     root * /app/public
     encode gzip
 
@@ -32,36 +39,54 @@ fund-transfer.local {
     # Redirect /favicon.ico to the SVG favicon
     redir /favicon.ico /favicon.svg 301
 
-    # Coverage HTML report — self-contained assets, allow inline scripts/styles
-    handle /reports/coverage* {
-        header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-        uri strip_prefix /reports/coverage
-        root * /app/docs/reports/coverage
-        file_server
-    }
+    # route ensures directives run in declaration order — rewrite fires before handle matching.
+    # On api.fund-transfer.local: /v1/* → /api/v1/* and /docs* → /api/docs*
+    # so external URLs read api.fund-transfer.local/v1/transfers (no redundant /api/).
+    # All Symfony routes and tests remain on /api/v1/… unchanged.
+    route {
+        @api_short_v1 {
+            host api.fund-transfer.local
+            path /v1/*
+        }
+        rewrite @api_short_v1 /api{uri}
 
-    # Relaxed CSP for the API docs UI — Redocly loads scripts + fonts from CDNs
-    handle /api/docs* {
-        header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdn.redoc.ly; connect-src 'self' https://cdn.jsdelivr.net; worker-src blob:"
-        php_server
-    }
+        @api_short_docs {
+            host api.fund-transfer.local
+            path /docs*
+        }
+        rewrite @api_short_docs /api{uri}
 
-    # Strict CSP for the landing page (inline styles only — no external resources)
-    handle / {
-        header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
-        php_server
-    }
+        # Coverage HTML report — self-contained assets, allow inline scripts/styles
+        handle /reports/coverage* {
+            header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+            uri strip_prefix /reports/coverage
+            root * /app/docs/reports/coverage
+            file_server
+        }
 
-    # Strict CSP for all API endpoints — no scripts, no styles needed
-    handle /api/* {
-        header Content-Security-Policy "default-src 'none'"
-        php_server
-    }
+        # Relaxed CSP for the API docs UI — Redocly loads scripts + fonts from CDNs
+        handle /api/docs* {
+            header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdn.redoc.ly; connect-src 'self' https://cdn.jsdelivr.net; worker-src blob:"
+            php_server
+        }
 
-    # Catch-all for any other paths
-    handle {
-        header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-        php_server
+        # Strict CSP for the landing page (inline styles only — no external resources)
+        handle / {
+            header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
+            php_server
+        }
+
+        # Strict CSP for all API endpoints — no scripts, no styles needed
+        handle /api/* {
+            header Content-Security-Policy "default-src 'none'"
+            php_server
+        }
+
+        # Catch-all for any other paths
+        handle {
+            header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+            php_server
+        }
     }
 }
 

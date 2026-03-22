@@ -1,6 +1,6 @@
 # Query Execution Plans
 
-Generated: 2026-03-21 22:22:44
+Generated: 2026-03-22 19:01:11
 
 > Plans produced with `EXPLAIN` (no data modified). Placeholder UUID: `00000000-0000-4000-8000-000000000000`.
 
@@ -11,7 +11,7 @@ SELECT * FROM accounts WHERE id = $1
 ```
 
 ```
-Seq Scan on accounts  (cost=0.00..4.69 rows=1 width=120)
+Seq Scan on accounts  (cost=0.00..2.65 rows=1 width=120)
   Filter: ((id)::text = '00000000-0000-4000-8000-000000000000'::text)
 ```
 
@@ -22,9 +22,9 @@ SELECT * FROM accounts WHERE user_id = $1 ORDER BY created_at ASC
 ```
 
 ```
-Sort  (cost=4.70..4.70 rows=1 width=120)
+Sort  (cost=2.66..2.66 rows=1 width=120)
   Sort Key: created_at
-  ->  Seq Scan on accounts  (cost=0.00..4.69 rows=1 width=120)
+  ->  Seq Scan on accounts  (cost=0.00..2.65 rows=1 width=120)
         Filter: ((user_id)::text = '00000000-0000-4000-8000-000000000000'::text)
 ```
 
@@ -35,8 +35,8 @@ SELECT COUNT(*) FROM accounts WHERE user_id = $1 AND currency = $2 AND status !=
 ```
 
 ```
-Aggregate  (cost=5.37..5.38 rows=1 width=8)
-  ->  Seq Scan on accounts  (cost=0.00..5.36 rows=1 width=0)
+Aggregate  (cost=2.91..2.92 rows=1 width=8)
+  ->  Seq Scan on accounts  (cost=0.00..2.91 rows=1 width=0)
         Filter: (((status)::text <> 'closed'::text) AND ((user_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND ((currency)::text = 'USD'::text))
 ```
 
@@ -69,7 +69,7 @@ SELECT * FROM transfers WHERE id = $1
 ```
 
 ```
-Index Scan using transfers_pkey on transfers  (cost=0.27..8.29 rows=1 width=792)
+Index Scan using transfers_pkey on transfers  (cost=0.41..8.43 rows=1 width=807)
   Index Cond: ((id)::text = '00000000-0000-4000-8000-000000000000'::text)
 ```
 
@@ -80,7 +80,7 @@ SELECT * FROM transfers WHERE idempotency_key = $1
 ```
 
 ```
-Index Scan using transfers_idempotency_key_unique on transfers  (cost=0.27..8.29 rows=1 width=792)
+Index Scan using transfers_idempotency_key_unique on transfers  (cost=0.41..8.43 rows=1 width=807)
   Index Cond: ((idempotency_key)::text = 'idem-key-example'::text)
 ```
 
@@ -91,16 +91,16 @@ SELECT * FROM transfers WHERE (from_account_id = $1 OR to_account_id = $2) AND c
 ```
 
 ```
-Limit  (cost=14.49..14.49 rows=2 width=792)
-  ->  Sort  (cost=14.49..14.49 rows=2 width=792)
+Limit  (cost=12.62..12.62 rows=1 width=807)
+  ->  Sort  (cost=12.62..12.62 rows=1 width=807)
         Sort Key: created_at DESC
-        ->  Bitmap Heap Scan on transfers  (cost=8.57..14.48 rows=2 width=792)
-              Recheck Cond: ((((from_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-21 22:22:44'::timestamp without time zone)) OR (((to_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-21 22:22:44'::timestamp without time zone)))
-              ->  BitmapOr  (cost=8.57..8.57 rows=2 width=0)
-                    ->  Bitmap Index Scan on idx_transfers_from_account  (cost=0.00..4.28 rows=1 width=0)
-                          Index Cond: (((from_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-21 22:22:44'::timestamp without time zone))
-                    ->  Bitmap Index Scan on idx_transfers_to_account  (cost=0.00..4.28 rows=1 width=0)
-                          Index Cond: (((to_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-21 22:22:44'::timestamp without time zone))
+        ->  Bitmap Heap Scan on transfers  (cost=8.59..12.61 rows=1 width=807)
+              Recheck Cond: ((((from_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-22 19:01:11'::timestamp without time zone)) OR (((to_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-22 19:01:11'::timestamp without time zone)))
+              ->  BitmapOr  (cost=8.59..8.59 rows=1 width=0)
+                    ->  Bitmap Index Scan on idx_transfers_from_account  (cost=0.00..4.29 rows=1 width=0)
+                          Index Cond: (((from_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-22 19:01:11'::timestamp without time zone))
+                    ->  Bitmap Index Scan on idx_transfers_to_account  (cost=0.00..4.29 rows=1 width=0)
+                          Index Cond: (((to_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at < '2026-03-22 19:01:11'::timestamp without time zone))
 ```
 
 ## transfers — duplicate detection within time window
@@ -110,8 +110,8 @@ SELECT COUNT(*) FROM transfers WHERE from_account_id = $1 AND to_account_id = $2
 ```
 
 ```
-Aggregate  (cost=8.31..8.32 rows=1 width=8)
-  ->  Index Scan using idx_transfers_to_account on transfers  (cost=0.28..8.31 rows=1 width=0)
+Aggregate  (cost=6.07..6.08 rows=1 width=8)
+  ->  Index Scan using idx_transfers_to_account on transfers  (cost=0.29..6.07 rows=1 width=0)
         Index Cond: (((to_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (created_at > (now() - '00:01:00'::interval)))
         Filter: (((status)::text <> ALL ('{failed,completed}'::text[])) AND ((from_account_id)::text = '00000000-0000-4000-8000-000000000000'::text) AND (amount = 100.00000000) AND ((currency)::text = 'USD'::text))
 ```

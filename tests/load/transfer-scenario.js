@@ -35,9 +35,9 @@ const transferLatency    = new Trend('transfer_latency_ms', true);
 export const options = {
     insecureSkipTLSVerify: true,          // local Caddy self-signed cert
     stages: [
-        { duration: '20s', target: 10  }, // ramp up
-        { duration: '40s', target: 10  }, // sustain
-        { duration: '20s', target: 20  }, // spike — exercises pessimistic lock contention
+        { duration: '20s', target: 20  }, // ramp up
+        { duration: '40s', target: 50  }, // sustain — full lock contention on single account pair
+        { duration: '20s', target: 50  }, // spike — peak pessimistic lock stress
         { duration: '20s', target: 0   }, // ramp down
     ],
     thresholds: {
@@ -45,7 +45,7 @@ export const options = {
         // returns correct status codes, this passes.  Measures behaviour, not HTTP mechanics.
         checks:             ['rate>0.99'], // >99% check assertions must pass
         http_req_duration:  ['p(95)<800'], // 95th percentile < 800ms
-        transfers_accepted: ['count>50'],  // at least 50 transfers accepted over the run
+        transfers_accepted: ['count>100'], // at least 100 transfers accepted over the run
     },
 };
 

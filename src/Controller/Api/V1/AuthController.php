@@ -38,70 +38,58 @@ final readonly class AuthController
      * This route exists so the router can match the path.
      * The security component intercepts the request before it reaches here.
      */
-    #[OA\Post(
-        path: '/api/v1/auth/login',
-        summary: 'Obtain a JWT access token',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['username', 'password'],
-                properties: [
-                    new OA\Property(property: 'username', type: 'string', format: 'email', example: 'user@example.com'),
-                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'Password123!'),
-                ],
-            ),
+    #[OA\Post(path: '/api/v1/auth/login', summary: 'Obtain a JWT access token', security: [], requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['username', 'password'],
+            properties: [
+                new OA\Property(property: 'username', type: 'string', format: 'email', example: 'user@example.com'),
+                new OA\Property(property: 'password', type: 'string', format: 'password', example: 'Password123!'),
+            ],
         ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'JWT token pair',
-                content: new OA\JsonContent(properties: [
-                    new OA\Property(property: 'token', type: 'string'),
-                    new OA\Property(property: 'refresh_token', type: 'string'),
-                ]),
-            ),
-            new OA\Response(response: 401, description: 'Invalid credentials'),
-        ],
-        security: [],
-    )]
+    ), responses: [
+        new OA\Response(
+            response: 200,
+            description: 'JWT token pair',
+            content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'token', type: 'string'),
+                new OA\Property(property: 'refresh_token', type: 'string'),
+            ]),
+        ),
+        new OA\Response(response: 401, description: 'Invalid credentials'),
+    ])]
     #[Route('/login', methods: ['POST'])]
     public function login(): never
     {
         throw new LogicException('This method should not be reached — handled by the security firewall.');
     }
 
-    #[OA\Post(
-        path: '/api/v1/auth/register',
-        summary: 'Register a new user and receive a JWT token pair',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['email', 'password', 'first_name', 'last_name'],
-                properties: [
-                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'alice@example.com'),
-                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'Password123!'),
-                    new OA\Property(property: 'first_name', type: 'string', example: 'Alice'),
-                    new OA\Property(property: 'last_name', type: 'string', example: 'Smith'),
-                ],
-            ),
+    #[OA\Post(path: '/api/v1/auth/register', summary: 'Register a new user and receive a JWT token pair', security: [], requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email', 'password', 'first_name', 'last_name'],
+            properties: [
+                new OA\Property(property: 'email', type: 'string', format: 'email', example: 'alice@example.com'),
+                new OA\Property(property: 'password', type: 'string', format: 'password', example: 'Password123!'),
+                new OA\Property(property: 'first_name', type: 'string', example: 'Alice'),
+                new OA\Property(property: 'last_name', type: 'string', example: 'Smith'),
+            ],
         ),
-        responses: [
-            new OA\Response(
-                response: 201,
-                description: 'Registration successful — returns JWT token pair',
-                content: new OA\JsonContent(properties: [
-                    new OA\Property(property: 'data', properties: [
-                        new OA\Property(property: 'token', type: 'string'),
-                        new OA\Property(property: 'refresh_token', type: 'string'),
-                    ], type: 'object'),
-                ]),
-            ),
-            new OA\Response(response: 409, description: 'Email already registered'),
-            new OA\Response(response: 422, description: 'Validation error — missing required fields'),
-            new OA\Response(response: 429, description: 'Rate limit exceeded'),
-        ],
-        security: [],
-    )]
+    ), responses: [
+        new OA\Response(
+            response: 201,
+            description: 'Registration successful — returns JWT token pair',
+            content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', properties: [
+                    new OA\Property(property: 'token', type: 'string'),
+                    new OA\Property(property: 'refresh_token', type: 'string'),
+                ], type: 'object'),
+            ]),
+        ),
+        new OA\Response(response: 409, description: 'Email already registered'),
+        new OA\Response(response: 422, description: 'Validation error — missing required fields'),
+        new OA\Response(response: 429, description: 'Rate limit exceeded'),
+    ])]
     #[Route('/register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
     {

@@ -63,7 +63,7 @@ final class AccountController extends AbstractController
             content: new OA\JsonContent(
                 required: ['currency', 'name'],
                 properties: [
-                    new OA\Property(property: 'currency', type: 'string', example: 'USD', description: 'ISO 4217 currency code'),
+                    new OA\Property(property: 'currency', description: 'ISO 4217 currency code', type: 'string', example: 'USD'),
                     new OA\Property(property: 'name', type: 'string', example: 'My USD Wallet'),
                 ],
             ),
@@ -118,21 +118,15 @@ final class AccountController extends AbstractController
         return new JsonResponse(['data' => $this->serialize($account)]);
     }
 
-    #[OA\Patch(
-        path: '/api/v1/accounts/{id}',
-        summary: 'Rename an account',
-        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))],
-        requestBody: new OA\RequestBody(
-            content: new OA\JsonContent(
-                properties: [new OA\Property(property: 'name', type: 'string', example: 'Savings')],
-            ),
+    #[OA\Patch(path: '/api/v1/accounts/{id}', summary: 'Rename an account', requestBody: new OA\RequestBody(
+        content: new OA\JsonContent(
+            properties: [new OA\Property(property: 'name', type: 'string', example: 'Savings')],
         ),
-        responses: [
-            new OA\Response(response: 200, description: 'Updated account'),
-            new OA\Response(response: 403, description: 'Forbidden'),
-            new OA\Response(response: 404, description: 'Account not found'),
-        ],
-    )]
+    ), parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))], responses: [
+        new OA\Response(response: 200, description: 'Updated account'),
+        new OA\Response(response: 403, description: 'Forbidden'),
+        new OA\Response(response: 404, description: 'Account not found'),
+    ])]
     #[Route('/{id}', methods: ['PATCH'])]
     public function update(string $id, Request $request): JsonResponse
     {

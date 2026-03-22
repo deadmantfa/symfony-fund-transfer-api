@@ -16,6 +16,7 @@
         "lexik/jwt-authentication-bundle": "*",
         "nelmio/api-doc-bundle": "*",
         "predis/predis": "*",
+        "runtime/frankenphp-symfony": "^1.0",
         "symfony/asset": "7.4.*",
         "symfony/cache": "7.4.*",
         "symfony/console": "7.4.*",

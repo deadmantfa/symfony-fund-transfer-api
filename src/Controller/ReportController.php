@@ -8,9 +8,9 @@ use League\CommonMark\CommonMarkConverter;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class ReportController
+final readonly class ReportController
 {
-    public function __construct(private readonly string $projectDir)
+    public function __construct(private string $projectDir)
     {
     }
 

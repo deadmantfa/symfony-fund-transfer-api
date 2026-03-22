@@ -24,20 +24,14 @@ final readonly class FxRateController
     ) {
     }
 
-    #[OA\Get(
-        path: '/api/v1/fx-rates/{from}/{to}',
-        summary: 'Get the current FX rate between two currencies',
-        parameters: [
-            new OA\Parameter(name: 'from', in: 'path', required: true, example: 'USD', schema: new OA\Schema(type: 'string')),
-            new OA\Parameter(name: 'to', in: 'path', required: true, example: 'EUR', schema: new OA\Schema(type: 'string')),
-        ],
-        responses: [
-            new OA\Response(response: 200, description: 'FX rate data'),
-            new OA\Response(response: 422, description: 'Invalid currency code'),
-            new OA\Response(response: 503, description: 'FX rate service unavailable'),
-        ],
-        security: [],
-    )]
+    #[OA\Get(path: '/api/v1/fx-rates/{from}/{to}', summary: 'Get the current FX rate between two currencies', security: [], parameters: [
+        new OA\Parameter(name: 'from', in: 'path', required: true, schema: new OA\Schema(type: 'string'), example: 'USD'),
+        new OA\Parameter(name: 'to', in: 'path', required: true, schema: new OA\Schema(type: 'string'), example: 'EUR'),
+    ], responses: [
+        new OA\Response(response: 200, description: 'FX rate data'),
+        new OA\Response(response: 422, description: 'Invalid currency code'),
+        new OA\Response(response: 503, description: 'FX rate service unavailable'),
+    ])]
     #[Route('/{from}/{to}', methods: ['GET'])]
     public function pair(string $from, string $to): JsonResponse
     {

@@ -27,7 +27,7 @@ use Throwable;
 #[AsCommand(name: 'app:demo', description: 'Run an end-to-end API demo (requires running stack)')]
 final class DemoCommand extends Command
 {
-    private const BASE    = 'https://fund-transfer.local';
+    private const BASE    = 'https://api.fund-transfer.local';
     private const EMAIL   = 'load_test@example.com';
     private const PASS    = 'Password123!';
     private const TIMEOUT = 5;
@@ -56,7 +56,7 @@ final class DemoCommand extends Command
                 'email'    => self::EMAIL,
                 'password' => self::PASS,
             ]);
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             $io->error('Could not reach ' . self::BASE . '. Is the stack running? Try: make prod');
 
             return Command::FAILURE;
@@ -68,6 +68,7 @@ final class DemoCommand extends Command
             return Command::FAILURE;
         }
 
+        /** @var string $token */
         $token = $loginRes['token'];
         $io->success('Logged in as ' . self::EMAIL);
 
@@ -75,7 +76,8 @@ final class DemoCommand extends Command
         $io->section('Step 2 · Accounts');
 
         $accountsRes = $this->get('/api/v1/accounts', $token);
-        $accounts    = $accountsRes['data'] ?? [];
+        /** @var list<array{id: string, currency: string, balance: string, name: string}> $accounts */
+        $accounts = $accountsRes['data'] ?? [];
 
         if (count($accounts) < 2) {
             $io->error('Need at least 2 accounts. Run "make seed" to set them up.');
@@ -97,7 +99,7 @@ final class DemoCommand extends Command
         $io->table(
             ['ID', 'Currency', 'Balance', 'Name'],
             array_map(
-                fn(array $a) => [substr($a['id'], 0, 8) . '…', $a['currency'], $a['balance'], $a['name']],
+                fn (array $a): array => [substr($a['id'], 0, 8) . '…', $a['currency'], $a['balance'], $a['name']],
                 $accounts,
             ),
         );
@@ -106,15 +108,20 @@ final class DemoCommand extends Command
         $io->section('Step 3 · FX Rate');
 
         $fxRes = $this->get('/api/v1/fx-rates/USD/EUR');
-        $rate  = $fxRes['data']['rate'] ?? 'unavailable';
-        $io->text(sprintf('USD → EUR rate: <info>%s</info>  (provider: %s)', $rate, $fxRes['data']['provider'] ?? '?'));
+        /** @var array{rate?: string, provider?: string} $fxData */
+        $fxData = $fxRes['data'] ?? [];
+        $rate   = $fxData['rate'] ?? 'unavailable';
+        $io->text(sprintf('USD → EUR rate: <info>%s</info>  (provider: %s)', $rate, $fxData['provider'] ?? '?'));
 
         // ── 4. Transfers ──────────────────────────────────────────────────────
         $io->section('Step 4 · Initiate Transfers');
 
+        /** @var list<string> $transferIds */
         $transferIds = [];
 
-        // Transfer A: same-currency USD → USD (uses first two accounts if both USD)
+        // Transfer A: cross-currency USD → EUR (accounts[0] to accounts[1]).
+        // The load-test user has one USD account and one EUR account (unique-per-currency constraint),
+        // so both transfers go through the FX conversion path.
         $fromId = $accounts[0]['id'];
         $toId   = $accounts[1]['id'];
 
@@ -126,18 +133,20 @@ final class DemoCommand extends Command
             'currency'        => $accounts[0]['currency'],
         ], $token, ['Idempotency-Key' => $keyA]);
 
-        if (isset($resA['data']['id'])) {
-            $transferIds[] = $resA['data']['id'];
+        /** @var array{id?: string, status?: string, detail?: string} $resAData */
+        $resAData = $resA['data'] ?? [];
+        if (isset($resAData['id'])) {
+            $transferIds[] = $resAData['id'];
             $io->text(sprintf(
                 '✓ Transfer A  <info>%s %s</info> from %s → %s  [<comment>%s</comment>]',
                 '10.00',
                 $accounts[0]['currency'],
                 substr($fromId, 0, 8) . '…',
                 substr($toId, 0, 8) . '…',
-                $resA['data']['status'],
+                $resAData['status'] ?? '',
             ));
         } else {
-            $io->warning('Transfer A was rejected: ' . ($resA['detail'] ?? json_encode($resA)));
+            $io->warning(sprintf('Transfer A was rejected: %s', $resAData['detail'] ?? json_encode($resA) ?: ''));
         }
 
         // Transfer B: cross-currency USD → EUR (if both account types exist)
@@ -150,22 +159,24 @@ final class DemoCommand extends Command
                 'currency'        => 'USD',
             ], $token, ['Idempotency-Key' => $keyB]);
 
-            if (isset($resB['data']['id'])) {
-                $transferIds[] = $resB['data']['id'];
+            /** @var array{id?: string, status?: string, detail?: string} $resBData */
+            $resBData = $resB['data'] ?? [];
+            if (isset($resBData['id'])) {
+                $transferIds[] = $resBData['id'];
                 $io->text(sprintf(
                     '✓ Transfer B  <info>25.00 USD → EUR</info>  (FX: ~%s EUR)  [<comment>%s</comment>]',
                     number_format((float) $rate * 25, 2),
-                    $resB['data']['status'],
+                    $resBData['status'] ?? '',
                 ));
             } else {
-                $io->warning('Transfer B was rejected: ' . ($resB['detail'] ?? json_encode($resB)));
+                $io->warning(sprintf('Transfer B was rejected: %s', $resBData['detail'] ?? json_encode($resB) ?: ''));
             }
         }
 
         // Transfer C: idempotency replay — same key as A, must return same transfer
         $io->section('Step 5 · Idempotency Check');
 
-        $resC        = $this->post('/api/v1/transfers', [
+        $resC = $this->post('/api/v1/transfers', [
             'from_account_id' => $fromId,
             'to_account_id'   => $toId,
             'amount'          => '10.00',
@@ -173,7 +184,9 @@ final class DemoCommand extends Command
         ], $token, ['Idempotency-Key' => $keyA]);
 
         // Idempotency hit returns HTTP 200 (not 202) with the original transfer body.
-        $replayId = $resC['data']['id'] ?? null;
+        /** @var array{id?: string} $resCData */
+        $resCData = $resC['data'] ?? [];
+        $replayId = $resCData['id'] ?? null;
         if ($replayId !== null && $replayId === ($transferIds[0] ?? null)) {
             $io->text('✓ Replay with same Idempotency-Key returned the <info>original transfer</info> — no double-spend.');
         } elseif ($replayId !== null) {
@@ -192,7 +205,9 @@ final class DemoCommand extends Command
             $pending = 0;
             foreach ($transferIds as $tid) {
                 $s = $this->get('/api/v1/transfers/' . $tid, $token);
-                if (($s['data']['status'] ?? '') !== 'completed') {
+                /** @var array{status?: string} $sData */
+                $sData = $s['data'] ?? [];
+                if (($sData['status'] ?? '') !== 'completed') {
                     $pending++;
                 }
             }
@@ -212,8 +227,10 @@ final class DemoCommand extends Command
 
         foreach ($transferIds as $tid) {
             $statusRes = $this->get('/api/v1/transfers/' . $tid, $token);
-            $status    = $statusRes['data']['status'] ?? 'unknown';
-            $colour    = $status === 'completed' ? 'info' : 'comment';
+            /** @var array{status?: string} $statusData */
+            $statusData = $statusRes['data'] ?? [];
+            $status     = $statusData['status'] ?? 'unknown';
+            $colour     = $status === 'completed' ? 'info' : 'comment';
             $io->text(sprintf(
                 'Transfer <href=%s/api/v1/transfers/%s>%s…</> → [<%s>%s</>]',
                 self::BASE,
@@ -251,8 +268,12 @@ final class DemoCommand extends Command
         return Command::SUCCESS;
     }
 
-    /** @param array<string, mixed> $body */
-    private function post(string $path, array $body, ?string $token = null, array $extraHeaders = []): mixed
+    /**
+     * @param array<string, mixed>  $body
+     * @param array<string, string> $extraHeaders
+     * @return array<string, mixed>
+     */
+    private function post(string $path, array $body, ?string $token = null, array $extraHeaders = []): array
     {
         $headers = ['Content-Type' => 'application/json'];
         if ($token !== null) {
@@ -270,10 +291,14 @@ final class DemoCommand extends Command
             'verify_host'         => false,
         ]);
 
-        return $res->toArray(false);
+        /** @var array<string, mixed> $data */
+        $data = $res->toArray(false);
+
+        return $data;
     }
 
-    private function get(string $path, ?string $token = null): mixed
+    /** @return array<string, mixed> */
+    private function get(string $path, ?string $token = null): array
     {
         $headers = ['Accept' => 'application/json'];
         if ($token !== null) {
@@ -287,6 +312,9 @@ final class DemoCommand extends Command
             'verify_host' => false,
         ]);
 
-        return $res->toArray(false);
+        /** @var array<string, mixed> $data */
+        $data = $res->toArray(false);
+
+        return $data;
     }
 }

@@ -16,12 +16,16 @@ services:
       DATABASE_URL: postgresql://app:secret@postgres:5432/fund_transfer?serverVersion=16&charset=utf8
       REDIS_URL: redis://redis:6379
       MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages
+      # Enable FrankenPHP worker mode — app boots once per thread, handles many requests.
+      # In dev, code changes require `docker compose restart app` to take effect.
+      APP_RUNTIME: Runtime\FrankenPhpSymfony\Runtime
     networks:
       default:
         # Allows other containers (e.g. k6) to reach the app as fund-transfer.local
-        # directly within the Docker network without extra_hosts tricks.
+        # or api.fund-transfer.local within the Docker network without extra_hosts tricks.
         aliases:
           - fund-transfer.local
+          - api.fund-transfer.local
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,7 +33,7 @@ services:
         condition: service_healthy
     healthcheck:
       # Resolve the domain to 127.0.0.1 inside the container — no /etc/hosts needed
-      test: ["CMD", "curl", "-fk", "--resolve", "fund-transfer.local:443:127.0.0.1", "https://fund-transfer.local/health"]
+      test: ["CMD", "curl", "-fk", "--resolve", "api.fund-transfer.local:443:127.0.0.1", "https://api.fund-transfer.local/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,7 +107,7 @@ services:
     volumes:
       - ./tests/load:/tests
     environment:
-      API_URL:    https://fund-transfer.local
+      API_URL:    https://api.fund-transfer.local
       SEED_EMAIL: load_test@example.com
       SEED_PASS:  Password123!
     command: run --out json=/tests/results.json /tests/transfer-scenario.js

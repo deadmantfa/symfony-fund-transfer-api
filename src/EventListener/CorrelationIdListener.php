@@ -14,8 +14,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Generates one if the client did not supply it, and echoes it back
  * in the response so the caller can trace their request in logs.
  */
-#[AsEventListener(event: KernelEvents::REQUEST, priority: 255, method: 'onRequest')]
-#[AsEventListener(event: KernelEvents::RESPONSE, priority: -255, method: 'onResponse')]
+#[AsEventListener(event: KernelEvents::REQUEST, method: 'onRequest', priority: 255)]
+#[AsEventListener(event: KernelEvents::RESPONSE, method: 'onResponse', priority: -255)]
 final class CorrelationIdListener
 {
     public function onRequest(RequestEvent $event): void
@@ -46,11 +46,14 @@ final class CorrelationIdListener
     {
         return sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
             mt_rand(0, 0xffff),
             mt_rand(0, 0x0fff) | 0x4000,
             mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
         );
     }
 }

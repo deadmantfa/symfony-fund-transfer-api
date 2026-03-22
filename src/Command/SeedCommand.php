@@ -47,7 +47,7 @@ final class SeedCommand extends Command
 
         // Load test user is an idempotent upsert — runs outside the main transaction
         // so a constraint conflict never poisons the seeding batch.
-        $loadTestIds = $this->seedLoadTestUser($io);
+        $this->seedLoadTestUser($io);
 
         $this->connection->beginTransaction();
 
@@ -155,7 +155,8 @@ final class SeedCommand extends Command
             'SELECT id, currency FROM accounts WHERE user_id = ? AND status = ?',
             [$resolvedUserId, 'active']
         ) as $row) {
-            $existingByCurrency[(string) $row['currency']] = (string) $row['id'];
+            /** @var array<string, string> $row */
+            $existingByCurrency[$row['currency']] = $row['id'];
         }
 
         if (!isset($existingByCurrency['USD'])) {
@@ -260,72 +261,6 @@ final class SeedCommand extends Command
         }
 
         return $ids;
-    }
-
-    /**
-     * @param list<string> $accountIds
-     * @param list<string> $userIds
-     */
-    private function seedTransfers(int $count, array $accountIds, array $userIds, SymfonyStyle $io): void
-    {
-        if (count($accountIds) < 2) {
-            $io->warning('Not enough accounts to seed transfers.');
-
-            return;
-        }
-
-        $io->writeln("Seeding {$count} transfers...");
-        $statuses = ['completed', 'completed', 'completed', 'failed'];
-        $batch    = [];
-
-        for ($i = 0; $i < $count; $i++) {
-            $fromIdx = array_rand($accountIds);
-            $toIdx   = array_rand($accountIds);
-            if ($fromIdx === $toIdx) {
-                continue;
-            }
-
-            $id      = (string) TransferId::generate();
-            $amount  = number_format(random_int(100, 10000) / 100, 8, '.', '');
-            $daysAgo = random_int(0, 365);
-            $date    = (new DateTimeImmutable("-{$daysAgo} days"))->format('Y-m-d H:i:s');
-            $status  = $statuses[array_rand($statuses)];
-            $userId  = $userIds[array_rand($userIds)];
-
-            $fromAccountId = $accountIds[$fromIdx];
-            $toAccountId   = $accountIds[$toIdx];
-
-            $batch[] = [
-                'id'                   => $id,
-                'from_account_id'      => $fromAccountId,
-                'to_account_id'        => $toAccountId,
-                'amount'               => $amount,
-                'currency'             => 'USD',
-                'from_amount'          => $amount,
-                'from_currency'        => 'USD',
-                'to_amount'            => $amount,
-                'to_currency'          => 'USD',
-                'fx_rate'              => '1.00000000',
-                'fx_rate_provider'     => 'stub',
-                'status'               => $status,
-                'idempotency_key'      => 'seed-' . $id,
-                'failure_reason'       => null,
-                'initiated_by_user_id' => $userId,
-                'ip_address'           => '127.0.0.1',
-                'user_agent'           => 'seed',
-                'created_at'           => $date,
-                'updated_at'           => $date,
-            ];
-
-            if (count($batch) >= 500) {
-                $this->insertBatch('transfers', $batch, 'ON CONFLICT DO NOTHING');
-                $batch = [];
-            }
-        }
-
-        if ($batch !== []) {
-            $this->insertBatch('transfers', $batch, 'ON CONFLICT DO NOTHING');
-        }
     }
 
     /**

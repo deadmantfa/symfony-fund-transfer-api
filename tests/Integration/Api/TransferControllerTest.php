@@ -222,10 +222,10 @@ final class TransferControllerTest extends WebTestCase
             ])
         );
         $this->assertResponseStatusCodeSame(200);
-        /** @var array{data: array{transfer_id: string}} $secondBody */
+        /** @var array{data: array{id: string}} $secondBody */
         $secondBody = json_decode((string) $this->client->getResponse()->getContent(), true);
-        // First response: data.id, second response (cached): data.transfer_id
-        $this->assertSame($firstBody['data']['id'], $secondBody['data']['transfer_id']);
+        // Both responses return data.id — the cached replay returns the same shape as the original 202
+        $this->assertSame($firstBody['data']['id'], $secondBody['data']['id']);
     }
 
     public function test_cannot_view_another_users_transfer(): void

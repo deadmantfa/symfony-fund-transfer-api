@@ -21,8 +21,10 @@ logs:
 worker-logs:
 	docker compose logs -f worker
 
-migrate:
+migrate: ## Run DB migrations for both dev and test environments
 	docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction
+	docker compose exec app php bin/console doctrine:database:create --if-not-exists --env=test
+	docker compose exec app php bin/console doctrine:migrations:migrate --no-interaction --env=test
 
 seed:
 	docker compose exec app php bin/console app:seed --users=10 --accounts=20
@@ -88,9 +90,9 @@ hosts:
 	@echo ""
 	@echo "Add this line to /etc/hosts (requires sudo):"
 	@echo ""
-	@echo "  127.0.0.1  fund-transfer.local db.fund-transfer.local mail.fund-transfer.local"
+	@echo "  127.0.0.1  fund-transfer.local api.fund-transfer.local db.fund-transfer.local mail.fund-transfer.local"
 	@echo ""
-	@echo "Run:  sudo sh -c 'echo \"127.0.0.1 fund-transfer.local db.fund-transfer.local mail.fund-transfer.local\" >> /etc/hosts'"
+	@echo "Run:  sudo sh -c 'echo \"127.0.0.1 fund-transfer.local api.fund-transfer.local db.fund-transfer.local mail.fund-transfer.local\" >> /etc/hosts'"
 	@echo ""
 
 trust-ca:
@@ -123,3 +125,5 @@ load-test: ## Run k6 load test against the local stack (run 'make prod && make s
 
 prod: ## Start services in production mode (APP_ENV=prod, JIT enabled, no debug)
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+	@echo "Warming prod DI container cache (prevents first-request compilation race in worker mode)..."
+	docker compose exec app php bin/console cache:warmup --env=prod

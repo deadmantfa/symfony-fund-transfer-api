@@ -2,12 +2,13 @@
 #
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   (or: make prod)
 #
 # Changes from dev:
-#   - APP_ENV=prod: enables OPcache preloading, disables the debug toolbar,
-#     uses the compiled DI container, and activates fingers_crossed log buffering
-#   - APP_DEBUG=0: disables stack traces and the profiler
-#   - validate_timestamps=0 injected via FRANKENPHP_NO_COMPRESS for maximum OPcache hit rate
+#   - APP_ENV=prod: compiled DI container, no debug toolbar, fingers_crossed log buffering
+#   - APP_DEBUG=0: no stack traces, no profiler
+#   - APP_RUNTIME: FrankenPHP worker mode — Symfony kernel boots once per thread,
+#     handles many requests in a loop (eliminates per-request bootstrap cost)
 #   - Worker runs without -vv verbosity
 
 services:
@@ -15,6 +16,7 @@ services:
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
+      APP_RUNTIME: Runtime\FrankenPhpSymfony\Runtime
       DATABASE_URL: postgresql://app:secret@postgres:5432/fund_transfer?serverVersion=16&charset=utf8
       REDIS_URL: redis://redis:6379
       MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages

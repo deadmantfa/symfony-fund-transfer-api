@@ -32,40 +32,33 @@ final class TransferController extends AbstractController
     ) {
     }
 
-    #[OA\Post(
-        path: '/api/v1/transfers',
-        summary: 'Initiate a fund transfer',
-        description: 'Debits the source account and credits the destination. Cross-currency transfers apply the live FX rate. Requires a unique `Idempotency-Key` header (UUID v4) — retrying with the same key returns the original response.',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['from_account_id', 'to_account_id', 'amount', 'currency'],
-                properties: [
-                    new OA\Property(property: 'from_account_id', type: 'string', format: 'uuid'),
-                    new OA\Property(property: 'to_account_id', type: 'string', format: 'uuid'),
-                    new OA\Property(property: 'amount', type: 'string', example: '100.00'),
-                    new OA\Property(property: 'currency', type: 'string', example: 'USD'),
-                    new OA\Property(property: 'note', type: 'string', nullable: true, example: 'Rent payment'),
-                ],
-            ),
+    #[OA\Post(path: '/api/v1/transfers', description: 'Debits the source account and credits the destination. Cross-currency transfers apply the live FX rate. Requires a unique `Idempotency-Key` header (UUID v4) — retrying with the same key returns the original response.', summary: 'Initiate a fund transfer', requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['from_account_id', 'to_account_id', 'amount', 'currency'],
+            properties: [
+                new OA\Property(property: 'from_account_id', type: 'string', format: 'uuid'),
+                new OA\Property(property: 'to_account_id', type: 'string', format: 'uuid'),
+                new OA\Property(property: 'amount', type: 'string', example: '100.00'),
+                new OA\Property(property: 'currency', type: 'string', example: 'USD'),
+                new OA\Property(property: 'note', type: 'string', example: 'Rent payment', nullable: true),
+            ],
         ),
-        parameters: [
-            new OA\Parameter(
-                name: 'Idempotency-Key',
-                in: 'header',
-                required: true,
-                description: 'UUID v4 — prevents duplicate processing on retries',
-                schema: new OA\Schema(type: 'string', format: 'uuid'),
-            ),
-        ],
-        responses: [
-            new OA\Response(response: 202, description: 'Transfer accepted (async processing)'),
-            new OA\Response(response: 200, description: 'Duplicate key — returns cached result'),
-            new OA\Response(response: 409, description: 'Insufficient funds or self-transfer'),
-            new OA\Response(response: 422, description: 'Missing Idempotency-Key header'),
-            new OA\Response(response: 401, description: 'Unauthenticated'),
-        ],
-    )]
+    ), parameters: [
+        new OA\Parameter(
+            name: 'Idempotency-Key',
+            description: 'UUID v4 — prevents duplicate processing on retries',
+            in: 'header',
+            required: true,
+            schema: new OA\Schema(type: 'string', format: 'uuid'),
+        ),
+    ], responses: [
+        new OA\Response(response: 202, description: 'Transfer accepted (async processing)'),
+        new OA\Response(response: 200, description: 'Duplicate key — returns cached result'),
+        new OA\Response(response: 409, description: 'Insufficient funds or self-transfer'),
+        new OA\Response(response: 422, description: 'Missing Idempotency-Key header'),
+        new OA\Response(response: 401, description: 'Unauthenticated'),
+    ])]
     #[Route('', methods: ['POST'])]
     public function initiate(Request $request): JsonResponse
     {

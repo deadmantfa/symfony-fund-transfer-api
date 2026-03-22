@@ -4,29 +4,39 @@ deptrac:
   layers:
     - name: Controller
       collectors:
-        - type: namespace
-          value: App\Controller
+        - type: directory
+          value: src/Controller/.*
     - name: Application
       collectors:
-        - type: namespace
-          value: App\Application
+        - type: directory
+          value: src/Application/.*
     - name: Domain
       collectors:
-        - type: namespace
-          value: App\Domain
+        - type: directory
+          value: src/Domain/.*
     - name: Infrastructure
       collectors:
-        - type: namespace
-          value: App\Infrastructure
+        - type: directory
+          value: src/Infrastructure/.*
     - name: Security
       collectors:
-        - type: namespace
-          value: App\Security
+        - type: directory
+          value: src/Security/.*
   ruleset:
+    # Controllers may depend on Application handlers, Domain value objects,
+    # and Security types (SecurityUser, Voters) — thin controllers are still
+    # direct users of Domain VOs for request/response mapping.
     Controller:
       - Application
+      - Domain
+      - Security
+    # Application handlers depend on Domain contracts only.
+    # RegisterUserHandler uses SecurityUser for Symfony's password hasher
+    # selection (hasher is configured per SecurityUser class) — unavoidable
+    # Symfony coupling that lives in Application, not Infrastructure.
     Application:
       - Domain
+      - Security
     Infrastructure:
       - Domain
     Security:

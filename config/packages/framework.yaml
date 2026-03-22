@@ -5,6 +5,17 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    http_client:
+        scoped_clients:
+            # Dedicated client for Frankfurter with a short timeout so that
+            # under load the service fails fast to the DB fallback rather than
+            # blocking each VU for 30 s waiting on an external rate-limit response.
+            frankfurter.client:
+                base_uri: '%env(FX_PROVIDER_URL)%'
+                timeout: 3
+                headers:
+                    Accept: 'application/json'
+
     #esi: true
     #fragments: true
 

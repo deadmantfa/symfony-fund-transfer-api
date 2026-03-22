@@ -8,7 +8,7 @@ final class FxRateControllerTest extends WebTestCase
 {
     public function test_get_rate_for_pair(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/v1/fx-rates/USD/EUR');
 
         $this->assertResponseIsSuccessful();
@@ -22,7 +22,7 @@ final class FxRateControllerTest extends WebTestCase
 
     public function test_same_currency_returns_rate_of_one(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/v1/fx-rates/USD/USD');
 
         $this->assertResponseIsSuccessful();
@@ -34,7 +34,7 @@ final class FxRateControllerTest extends WebTestCase
 
     public function test_invalid_currency_code_returns_422(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/v1/fx-rates/USD/TOOLONG');
 
         $this->assertResponseStatusCodeSame(422);
@@ -42,7 +42,7 @@ final class FxRateControllerTest extends WebTestCase
 
     public function test_lowercase_currency_is_normalized(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/v1/fx-rates/usd/eur');
 
         $this->assertResponseIsSuccessful();

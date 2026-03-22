@@ -13,14 +13,14 @@ use DateTimeImmutable;
 final readonly class LedgerEntry
 {
     private function __construct(
-        public readonly LedgerEntryId $id,
-        public readonly TransferId $transferId,
-        public readonly AccountId $accountId,
-        public readonly EntryType $entryType,
-        public readonly Money $amount,
-        public readonly Money $balanceBefore,
-        public readonly Money $balanceAfter,
-        public readonly DateTimeImmutable $createdAt,
+        public LedgerEntryId $id,
+        public TransferId $transferId,
+        public AccountId $accountId,
+        public EntryType $entryType,
+        public Money $amount,
+        public Money $balanceBefore,
+        public Money $balanceAfter,
+        public DateTimeImmutable $createdAt,
     ) {
     }
 

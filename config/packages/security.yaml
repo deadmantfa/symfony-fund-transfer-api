@@ -18,6 +18,10 @@ security:
             pattern: ^/health
             security: false
 
+        api_docs:
+            pattern: ^/api/docs
+            security: false
+
         login:
             pattern: ^/api/v1/auth/login
             stateless: true

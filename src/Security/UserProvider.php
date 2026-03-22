@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Domain\User\User;
 use App\Domain\User\UserRepository;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -14,9 +15,9 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 /**
  * @implements UserProviderInterface<SecurityUser>
  */
-final class UserProvider implements UserProviderInterface, PasswordUpgraderInterface
+final readonly class UserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {
-    public function __construct(private readonly UserRepository $userRepository)
+    public function __construct(private UserRepository $userRepository)
     {
     }
 
@@ -24,7 +25,7 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
     {
         $user = $this->userRepository->findByEmail($identifier);
 
-        if ($user === null) {
+        if (!$user instanceof User) {
             throw new UserNotFoundException("User '{$identifier}' not found.");
         }
 

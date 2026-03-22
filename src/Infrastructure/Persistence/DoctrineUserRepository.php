@@ -9,10 +9,11 @@ use App\Domain\User\UserId;
 use App\Domain\User\UserRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use DomainException;
 
-final class DoctrineUserRepository implements UserRepository
+final readonly class DoctrineUserRepository implements UserRepository
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private Connection $connection)
     {
     }
 
@@ -76,7 +77,7 @@ final class DoctrineUserRepository implements UserRepository
                 ],
             );
         } catch (UniqueConstraintViolationException $e) {
-            throw new \DomainException(
+            throw new DomainException(
                 "Email '{$user->email}' is already registered.",
                 0,
                 $e,

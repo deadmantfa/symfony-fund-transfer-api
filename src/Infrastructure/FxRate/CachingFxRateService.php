@@ -8,20 +8,22 @@ use App\Domain\FxRate\FxRate;
 use App\Domain\FxRate\FxRateId;
 use App\Domain\FxRate\FxRateProviderInterface;
 use App\Domain\FxRate\FxRateRepository;
+use App\Domain\FxRate\FxRateServiceInterface;
 use App\Domain\FxRate\FxRateUnavailableException;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use Brick\Math\BigDecimal;
+use DateTimeImmutable;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
-final class CachingFxRateService
+final readonly class CachingFxRateService implements FxRateServiceInterface
 {
     public function __construct(
-        private readonly FxRateProviderInterface $provider,
-        private readonly CacheItemPoolInterface $cache,
-        private readonly FxRateRepository $fxRateRepository,
-        private readonly LoggerInterface $logger,
-        private readonly int $cacheTtl,
+        private FxRateProviderInterface $provider,
+        private CacheItemPoolInterface $cache,
+        private FxRateRepository $fxRateRepository,
+        private LoggerInterface $logger,
+        private int $cacheTtl,
     ) {
     }
 
@@ -35,7 +37,7 @@ final class CachingFxRateService
                 targetCurrency: $to,
                 rate: BigDecimal::of('1')->toScale(10),
                 provider: 'identity',
-                fetchedAt: new \DateTimeImmutable(),
+                fetchedAt: new DateTimeImmutable(),
             );
         }
 
@@ -81,7 +83,7 @@ final class CachingFxRateService
         // 5. DB fallback
         $fallback = $this->fxRateRepository->findLatest($from, $to);
 
-        if ($fallback !== null) {
+        if ($fallback instanceof FxRate) {
             $this->logger->warning(
                 "Using DB fallback FX rate for {$from}/{$to} (fetched at {$fallback->fetchedAt->format('Y-m-d H:i:s')})",
             );

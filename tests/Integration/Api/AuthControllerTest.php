@@ -10,16 +10,16 @@ final class AuthControllerTest extends WebTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        static::bootKernel();
+        self::bootKernel();
         /** @var Connection $conn */
-        $conn = static::getContainer()->get('doctrine.dbal.default_connection');
+        $conn = self::getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('TRUNCATE TABLE refresh_tokens, users RESTART IDENTITY CASCADE');
-        static::ensureKernelShutdown();
+        self::ensureKernelShutdown();
     }
 
     public function test_register_creates_user_and_returns_tokens(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/register',
@@ -44,7 +44,7 @@ final class AuthControllerTest extends WebTestCase
 
     public function test_register_with_duplicate_email_returns_409(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $payload = (string) json_encode([
             'email' => 'dup@example.com', 'password' => 'SecurePass123!',
             'first_name' => 'A', 'last_name' => 'B',
@@ -59,7 +59,7 @@ final class AuthControllerTest extends WebTestCase
 
     public function test_login_with_valid_credentials_returns_token(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
 
         // Register first
         $client->request(
@@ -89,7 +89,7 @@ final class AuthControllerTest extends WebTestCase
 
     public function test_login_with_wrong_password_returns_401(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/login',
@@ -104,7 +104,7 @@ final class AuthControllerTest extends WebTestCase
 
     public function test_protected_route_without_token_returns_401(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         // Any /api path that requires IS_AUTHENTICATED_FULLY returns 401 without a JWT
         $client->request('GET', '/api/v1/me');
         $this->assertResponseStatusCodeSame(401);

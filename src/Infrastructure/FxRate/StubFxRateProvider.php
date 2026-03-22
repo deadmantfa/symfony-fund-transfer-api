@@ -10,6 +10,7 @@ use App\Domain\FxRate\FxRateProviderInterface;
 use App\Domain\FxRate\FxRateUnavailableException;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use Brick\Math\BigDecimal;
+use DateTimeImmutable;
 
 /**
  * Deterministic FX rates for tests — no HTTP calls.
@@ -55,12 +56,12 @@ class StubFxRateProvider implements FxRateProviderInterface
             targetCurrency: $to,
             rate: BigDecimal::of((string) round($rate, 10))->toScale(10),
             provider: 'stub',
-            fetchedAt: new \DateTimeImmutable(),
+            fetchedAt: new DateTimeImmutable(),
         );
     }
 
     public function getSupportedCurrencies(): array
     {
-        return array_values(array_filter(array_keys($this->rates), static fn (string $k) => !str_contains($k, '/')));
+        return array_values(array_filter(array_keys($this->rates), static fn (string $k): bool => !str_contains($k, '/')));
     }
 }

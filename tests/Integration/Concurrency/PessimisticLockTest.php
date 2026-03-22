@@ -11,6 +11,8 @@ use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountRepository;
 use App\Domain\AuditLog\AuditLogId;
 use App\Domain\AuditLog\AuditLogRepository;
+use App\Domain\FxRate\FxRate;
+use App\Domain\FxRate\FxRateId;
 use App\Domain\FxRate\FxRateRepository;
 use App\Domain\LedgerEntry\LedgerEntryId;
 use App\Domain\LedgerEntry\LedgerEntryRepository;
@@ -24,6 +26,7 @@ use App\Domain\User\UserId;
 use App\Infrastructure\FxRate\CachingFxRateService;
 use App\Infrastructure\FxRate\StubFxRateProvider;
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -47,14 +50,16 @@ final class PessimisticLockTest extends TestCase
     private function makeFxService(): CachingFxRateService
     {
         $fxRepo = new class () implements FxRateRepository {
-            public function findLatest(CurrencyCode $from, CurrencyCode $to): ?\App\Domain\FxRate\FxRate
+            public function findLatest(CurrencyCode $from, CurrencyCode $to): ?FxRate
             {
                 return null;
             }
-            public function save(\App\Domain\FxRate\FxRate $rate): void {}
-            public function nextIdentity(): \App\Domain\FxRate\FxRateId
+            public function save(FxRate $rate): void
             {
-                return \App\Domain\FxRate\FxRateId::generate();
+            }
+            public function nextIdentity(): FxRateId
+            {
+                return FxRateId::generate();
             }
         };
 
@@ -100,33 +105,30 @@ final class PessimisticLockTest extends TestCase
     /** @param array<string, Account> $accountMap */
     private function processTransfer(Transfer $transfer, array &$accountMap): void
     {
-        $fromIdStr = (string) $transfer->fromAccountId;
-        $toIdStr   = (string) $transfer->toAccountId;
-
-        /** @var Connection&\PHPUnit\Framework\MockObject\MockObject $conn */
+        /** @var Connection&MockObject $conn */
         $conn = $this->createMock(Connection::class);
 
-        /** @var TransferRepository&\PHPUnit\Framework\MockObject\MockObject $transferRepo */
+        /** @var TransferRepository&MockObject $transferRepo */
         $transferRepo = $this->createMock(TransferRepository::class);
         $transferRepo->method('findByIdForUpdate')->willReturn($transfer);
         $transferRepo->method('save');
 
-        /** @var AccountRepository&\PHPUnit\Framework\MockObject\MockObject $accountRepo */
+        /** @var AccountRepository&MockObject $accountRepo */
         $accountRepo = $this->createMock(AccountRepository::class);
         $accountRepo->method('findByIdForUpdate')->willReturnCallback(
             fn (AccountId $id) => $accountMap[(string) $id]
         );
         $accountRepo->method('save');
 
-        /** @var LedgerEntryRepository&\PHPUnit\Framework\MockObject\MockObject $ledgerRepo */
+        /** @var LedgerEntryRepository&MockObject $ledgerRepo */
         $ledgerRepo = $this->createMock(LedgerEntryRepository::class);
         $ledgerRepo->method('nextIdentity')->willReturn(LedgerEntryId::generate());
 
-        /** @var AuditLogRepository&\PHPUnit\Framework\MockObject\MockObject $auditRepo */
+        /** @var AuditLogRepository&MockObject $auditRepo */
         $auditRepo = $this->createMock(AuditLogRepository::class);
         $auditRepo->method('nextIdentity')->willReturn(AuditLogId::generate());
 
-        $handler = new ProcessTransferHandler($conn, $transferRepo, $accountRepo, $ledgerRepo, $auditRepo, $this->makeFxService());
+        $handler = new ProcessTransferHandler($conn, $transferRepo, $accountRepo, $ledgerRepo, $auditRepo, $this->makeFxService(), new NullLogger());
         $handler(new ProcessTransferCommand((string) $transfer->id));
     }
 }

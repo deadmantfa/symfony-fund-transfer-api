@@ -8,7 +8,7 @@ final class OWASPTest extends WebTestCase
 {
     public function test_404_returns_problem_details(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/v1/nonexistent');
 
         $this->assertResponseStatusCodeSame(404);
@@ -24,7 +24,7 @@ final class OWASPTest extends WebTestCase
 
     public function test_malformed_json_returns_422(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/register',
@@ -42,7 +42,7 @@ final class OWASPTest extends WebTestCase
 
     public function test_sql_injection_attempt_is_handled_safely(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'GET',
             "/api/v1/accounts/'; DROP TABLE accounts; --",

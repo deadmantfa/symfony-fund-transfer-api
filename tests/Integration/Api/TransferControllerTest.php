@@ -3,21 +3,22 @@
 declare(strict_types=1);
 
 use Doctrine\DBAL\Connection;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class TransferControllerTest extends WebTestCase
 {
-    private \Symfony\Bundle\FrameworkBundle\KernelBrowser $client;
+    private KernelBrowser $client;
 
     protected function setUp(): void
     {
         parent::setUp();
-        static::bootKernel();
+        self::bootKernel();
         /** @var Connection $conn */
-        $conn = static::getContainer()->get('doctrine.dbal.default_connection');
+        $conn = self::getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('TRUNCATE TABLE refresh_tokens, users, accounts, transfers, ledger_entries, audit_logs RESTART IDENTITY CASCADE');
-        static::ensureKernelShutdown();
-        $this->client = static::createClient();
+        self::ensureKernelShutdown();
+        $this->client = self::createClient();
     }
 
     private function registerAndVerifyUser(string $email): string

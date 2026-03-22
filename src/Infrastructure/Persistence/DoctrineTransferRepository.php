@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence;
 
 use App\Domain\Account\AccountId;
+use App\Domain\Shared\ValueObject\Money;
 use App\Domain\Transfer\Transfer;
 use App\Domain\Transfer\TransferId;
 use App\Domain\Transfer\TransferRepository;
 use App\Domain\Transfer\TransferStatus;
 use Doctrine\DBAL\Connection;
 
-final class DoctrineTransferRepository implements TransferRepository
+final readonly class DoctrineTransferRepository implements TransferRepository
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection)
+    {
+    }
 
     public function findById(TransferId $id): ?Transfer
     {
@@ -86,10 +89,10 @@ final class DoctrineTransferRepository implements TransferRepository
                 (string) $transfer->toAccountId,
                 (string) $transfer->amount->amount,
                 (string) $transfer->amount->currency,
-                $transfer->fromAmount !== null ? (string) $transfer->fromAmount->amount : null,
-                $transfer->fromAmount !== null ? (string) $transfer->fromAmount->currency : null,
-                $transfer->toAmount !== null ? (string) $transfer->toAmount->amount : null,
-                $transfer->toAmount !== null ? (string) $transfer->toAmount->currency : null,
+                $transfer->fromAmount instanceof Money ? (string) $transfer->fromAmount->amount : null,
+                $transfer->fromAmount instanceof Money ? (string) $transfer->fromAmount->currency : null,
+                $transfer->toAmount instanceof Money ? (string) $transfer->toAmount->amount : null,
+                $transfer->toAmount instanceof Money ? (string) $transfer->toAmount->currency : null,
                 $transfer->fxRate,
                 $transfer->fxRateProvider,
                 $transfer->status->value,

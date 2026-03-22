@@ -6,14 +6,16 @@ namespace App\Domain\Shared\ValueObject;
 
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use InvalidArgumentException;
+use Stringable;
 
-final readonly class Money
+final readonly class Money implements Stringable
 {
-    public readonly BigDecimal $amount;
+    public BigDecimal $amount;
 
     public function __construct(
         string|BigDecimal $amount,
-        public readonly CurrencyCode $currency,
+        public CurrencyCode $currency,
     ) {
         $this->amount = $amount instanceof BigDecimal
             ? $amount->toScale(8, RoundingMode::HalfUp)
@@ -72,7 +74,7 @@ final readonly class Money
     private function assertSameCurrency(self $other): void
     {
         if (!$this->currency->equals($other->currency)) {
-            throw new \InvalidArgumentException("Currency mismatch: {$this->currency} vs {$other->currency}");
+            throw new InvalidArgumentException("Currency mismatch: {$this->currency} vs {$other->currency}");
         }
     }
 

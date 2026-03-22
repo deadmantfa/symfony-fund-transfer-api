@@ -6,8 +6,9 @@
     "mutators": {
         "@default": true
     },
-    "minMsi": 100,
-    "minCoveredMsi": 100,
-    "testFramework": "pest",
-    "testFrameworkOptions": "--no-coverage"
+    "minMsi": 80,
+    "minCoveredMsi": 80,
+    "testFramework": "phpunit",
+    "testFrameworkOptions": "--no-coverage",
+    "_note": "infection.json kept for reference; use 'make mutation' which runs pest-plugin-mutate instead"
 }

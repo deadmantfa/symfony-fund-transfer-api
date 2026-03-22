@@ -12,11 +12,14 @@
         "doctrine/doctrine-migrations-bundle": "*",
         "doctrine/orm": "*",
         "gesdinet/jwt-refresh-token-bundle": "*",
+        "league/commonmark": "^2.8",
         "lexik/jwt-authentication-bundle": "*",
         "nelmio/api-doc-bundle": "*",
         "predis/predis": "*",
+        "symfony/asset": "7.4.*",
         "symfony/cache": "7.4.*",
         "symfony/console": "7.4.*",
+        "symfony/doctrine-messenger": "7.4.*",
         "symfony/dotenv": "7.4.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "7.4.*",
@@ -24,13 +27,17 @@
         "symfony/http-foundation": "7.4.*",
         "symfony/http-kernel": "7.4.*",
         "symfony/messenger": "7.4.*",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/rate-limiter": "7.4.*",
+        "symfony/redis-messenger": "7.4.*",
         "symfony/routing": "7.4.*",
         "symfony/runtime": "7.4.*",
         "symfony/security-bundle": "7.4.*",
         "symfony/serializer": "7.4.*",
+        "symfony/twig-bundle": "7.4.*",
         "symfony/validator": "7.4.*",
-        "symfony/yaml": "7.4.*"
+        "symfony/yaml": "7.4.*",
+        "twig/extra-bundle": "^3.24"
     },
     "config": {
         "allow-plugins": {

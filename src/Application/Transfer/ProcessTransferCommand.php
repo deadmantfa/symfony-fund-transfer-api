@@ -6,5 +6,7 @@ namespace App\Application\Transfer;
 
 final readonly class ProcessTransferCommand
 {
-    public function __construct(public readonly string $transferId) {}
+    public function __construct(public string $transferId)
+    {
+    }
 }

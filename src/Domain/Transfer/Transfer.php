@@ -9,6 +9,7 @@ use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Domain\Shared\ValueObject\Money;
 use App\Domain\User\UserId;
 use DateTimeImmutable;
+use DomainException;
 
 final class Transfer
 {
@@ -169,7 +170,7 @@ final class Transfer
     public function cancel(): void
     {
         if ($this->status !== TransferStatus::Pending) {
-            throw new \DomainException('Only pending transfers can be cancelled.');
+            throw new DomainException('Only pending transfers can be cancelled.');
         }
         $this->fail('cancelled_by_user');
     }
@@ -177,7 +178,7 @@ final class Transfer
     private function assertCanTransitionTo(TransferStatus $next): void
     {
         if (!$this->status->canTransitionTo($next)) {
-            throw new \DomainException(
+            throw new DomainException(
                 "Cannot transition transfer from {$this->status->value} to {$next->value}."
             );
         }

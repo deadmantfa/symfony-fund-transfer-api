@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User;
 
 use DateTimeImmutable;
+use DomainException;
 
 final class User
 {
@@ -138,7 +139,7 @@ final class User
     public function approveKyc(): void
     {
         if (!$this->status->isActive()) {
-            throw new \DomainException('Cannot approve KYC for inactive user.');
+            throw new DomainException('Cannot approve KYC for inactive user.');
         }
         $this->kycStatus = KycStatus::Verified;
         $this->updatedAt = new DateTimeImmutable();
@@ -184,6 +185,6 @@ final class User
     {
         return $this->status->isActive()
             && $this->kycStatus->allowsTransfers()
-            && $this->emailVerifiedAt !== null;
+            && $this->emailVerifiedAt instanceof DateTimeImmutable;
     }
 }

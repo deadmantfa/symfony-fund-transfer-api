@@ -12,11 +12,12 @@ use App\Domain\LedgerEntry\LedgerEntryRepository;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Domain\Shared\ValueObject\Money;
 use App\Domain\Transfer\TransferId;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 
-final class DoctrineLedgerEntryRepository implements LedgerEntryRepository
+final readonly class DoctrineLedgerEntryRepository implements LedgerEntryRepository
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private Connection $connection)
     {
     }
 
@@ -57,7 +58,7 @@ final class DoctrineLedgerEntryRepository implements LedgerEntryRepository
 
         $rows = $this->connection->fetchAllAssociative($sql, $params);
 
-        return array_map(fn (array $row): LedgerEntry => $this->hydrateEntry($row), $rows);
+        return array_map($this->hydrateEntry(...), $rows);
     }
 
     public function nextIdentity(): LedgerEntryId
@@ -88,7 +89,7 @@ final class DoctrineLedgerEntryRepository implements LedgerEntryRepository
             amount: new Money((string) $row['amount'], $currency),
             balanceBefore: new Money((string) $row['balance_before'], $currency),
             balanceAfter: new Money((string) $row['balance_after'], $currency),
-            createdAt: new \DateTimeImmutable($row['created_at']),
+            createdAt: new DateTimeImmutable($row['created_at']),
         );
     }
 }

@@ -10,26 +10,35 @@ final class KycGatingTest extends WebTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        static::bootKernel();
+        self::bootKernel();
         /** @var Connection $conn */
-        $conn = static::getContainer()->get('doctrine.dbal.default_connection');
+        $conn = self::getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('TRUNCATE TABLE refresh_tokens, users, accounts, transfers, ledger_entries, audit_logs RESTART IDENTITY CASCADE');
-        static::ensureKernelShutdown();
+        self::ensureKernelShutdown();
     }
 
     public function test_unverified_user_cannot_initiate_transfer(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
 
         // Register (KYC is unverified by default)
-        $client->request('POST', '/api/v1/auth/register', [], [], ['CONTENT_TYPE' => 'application/json'],
+        $client->request(
+            'POST',
+            '/api/v1/auth/register',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
             (string) json_encode(['email' => 'kyc@test.com', 'password' => 'SecurePass123!', 'first_name' => 'K', 'last_name' => 'Y'])
         );
         /** @var array{data: array{token: string}} $regBody */
         $regBody = json_decode((string) $client->getResponse()->getContent(), true);
         $token   = $regBody['data']['token'];
 
-        $client->request('POST', '/api/v1/transfers', [], [],
+        $client->request(
+            'POST',
+            '/api/v1/transfers',
+            [],
+            [],
             [
                 'CONTENT_TYPE'         => 'application/json',
                 'HTTP_AUTHORIZATION'   => "Bearer {$token}",

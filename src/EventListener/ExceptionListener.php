@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Throwable;
 
 /**
  * Normalizes all exceptions to RFC 9457 Problem Details format.
@@ -69,7 +70,7 @@ final class ExceptionListener
         };
     }
 
-    private function mapTitle(int $status, \Throwable $e): string
+    private function mapTitle(int $status, Throwable $e): string
     {
         return match ($status) {
             400 => 'Bad Request',

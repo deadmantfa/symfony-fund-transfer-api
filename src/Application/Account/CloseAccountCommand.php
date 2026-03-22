@@ -6,7 +6,7 @@ namespace App\Application\Account;
 
 final readonly class CloseAccountCommand
 {
-    public function __construct(public readonly string $accountId)
+    public function __construct(public string $accountId)
     {
     }
 }

@@ -11,18 +11,18 @@ use DateTimeImmutable;
 final readonly class AuditLog
 {
     private function __construct(
-        public readonly AuditLogId $id,
-        public readonly string $entityType,
-        public readonly string $entityId,
-        public readonly string $action,
-        public readonly ?UserId $actorId,
+        public AuditLogId $id,
+        public string $entityType,
+        public string $entityId,
+        public string $action,
+        public ?UserId $actorId,
         /** @var array<string, mixed>|null */
-        public readonly ?array $oldValue,
+        public ?array $oldValue,
         /** @var array<string, mixed>|null */
-        public readonly ?array $newValue,
-        public readonly ?string $ipAddress,
-        public readonly ?string $userAgent,
-        public readonly DateTimeImmutable $createdAt,
+        public ?array $newValue,
+        public ?string $ipAddress,
+        public ?string $userAgent,
+        public DateTimeImmutable $createdAt,
     ) {
     }
 

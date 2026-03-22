@@ -8,10 +8,11 @@ use App\Domain\Account\Account;
 use App\Domain\Account\AccountRepository;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Domain\User\UserId;
+use DomainException;
 
-final class CreateAccountHandler
+final readonly class CreateAccountHandler
 {
-    public function __construct(private readonly AccountRepository $accountRepository)
+    public function __construct(private AccountRepository $accountRepository)
     {
     }
 
@@ -21,7 +22,7 @@ final class CreateAccountHandler
         $currency = new CurrencyCode(strtoupper($command->currency));
 
         if ($this->accountRepository->existsForUserAndCurrency($userId, strtoupper($command->currency))) {
-            throw new \DomainException("User already has a {$currency} account.");
+            throw new DomainException("User already has a {$currency} account.");
         }
 
         $account = Account::open(

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Domain\Account\AccountId;
-use App\Domain\Transfer\TransferId;
+use App\Domain\FxRate\FxRateId;
 use App\Domain\User\UserId;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -14,6 +15,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Throwable;
 
 #[AsCommand(name: 'app:seed', description: 'Seed the database with test data')]
 final class SeedCommand extends Command
@@ -26,32 +28,38 @@ final class SeedCommand extends Command
     protected function configure(): void
     {
         $this->addOption('users', null, InputOption::VALUE_REQUIRED, 'Number of users', 10)
-             ->addOption('accounts', null, InputOption::VALUE_REQUIRED, 'Accounts per user', 2)
-             ->addOption('transfers', null, InputOption::VALUE_REQUIRED, 'Number of transfers', 100);
+             ->addOption('accounts', null, InputOption::VALUE_REQUIRED, 'Accounts per user', 2);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io           = new SymfonyStyle($input, $output);
-        $usersOpt     = $input->getOption('users');
-        $accountsOpt  = $input->getOption('accounts');
-        $transfersOpt = $input->getOption('transfers');
-        $users        = is_numeric($usersOpt) ? (int) $usersOpt : 10;
-        $accounts     = is_numeric($accountsOpt) ? (int) $accountsOpt : 2;
-        $transfers    = is_numeric($transfersOpt) ? (int) $transfersOpt : 100;
+        $usersOpt    = $input->getOption('users');
+        $accountsOpt = $input->getOption('accounts');
+        $users       = is_numeric($usersOpt) ? (int) $usersOpt : 10;
+        $accounts    = is_numeric($accountsOpt) ? (int) $accountsOpt : 2;
 
-        $io->section("Seeding {$users} users, up to {$accounts} accounts/user, {$transfers} transfers");
+        $io->section("Seeding {$users} users, up to {$accounts} accounts/user");
+
+        // Seed FX rates so the DB fallback always has data — prevents thundering-herd
+        // timeouts when the Frankfurter API is rate-limited under concurrent load.
+        $this->seedFxRates($io);
+
+        // Load test user is an idempotent upsert — runs outside the main transaction
+        // so a constraint conflict never poisons the seeding batch.
+        $loadTestIds = $this->seedLoadTestUser($io);
 
         $this->connection->beginTransaction();
 
         try {
-            $userIds    = $this->seedUsers($users, $io);
-            $accountIds = $this->seedAccounts($accounts, $userIds, $io);
-            $this->seedTransfers($transfers, $accountIds, $userIds, $io);
+            // seedAccounts only receives freshly-created user IDs to avoid violating
+            // the unique (user_id, currency) index on the load test user's existing accounts.
+            $newUserIds = $this->seedUsers($users, $io);
+            $this->seedAccounts($accounts, $newUserIds, $io);
 
             $this->connection->commit();
             $io->success('Seeding complete.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->connection->rollBack();
             $io->error($e->getMessage());
 
@@ -59,6 +67,120 @@ final class SeedCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Upserts a baseline set of FX rates so the DB fallback in CachingFxRateService
+     * always has data even when the external Frankfurter API is rate-limited.
+     *
+     * Rates are approximate — only used as a fallback when the live API is unavailable.
+     */
+    private function seedFxRates(SymfonyStyle $io): void
+    {
+        $io->writeln('Seeding FX rates...');
+
+        $now   = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $pairs = [
+            ['USD', 'EUR', '0.9200000000'],
+            ['EUR', 'USD', '1.0870000000'],
+            ['USD', 'GBP', '0.7900000000'],
+            ['GBP', 'USD', '1.2660000000'],
+            ['USD', 'CAD', '1.3600000000'],
+            ['CAD', 'USD', '0.7350000000'],
+            ['USD', 'AUD', '1.5400000000'],
+            ['AUD', 'USD', '0.6490000000'],
+            ['EUR', 'GBP', '0.8600000000'],
+            ['GBP', 'EUR', '1.1630000000'],
+        ];
+
+        foreach ($pairs as [$base, $target, $rate]) {
+            $this->connection->executeStatement(
+                'INSERT INTO fx_rates (id, base_currency, target_currency, rate, provider, fetched_at)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT (base_currency, target_currency, provider)
+                 DO UPDATE SET rate = EXCLUDED.rate, fetched_at = EXCLUDED.fetched_at',
+                [(string) FxRateId::generate(), $base, $target, $rate, 'seed', $now],
+            );
+        }
+    }
+
+    /**
+     * Always upserts one well-known load test user so k6 and manual testing
+     * have a stable login target regardless of how many times seed is run.
+     *
+     * Credentials: load_test@example.com / Password123!
+     *
+     * @return array{userIds: list<string>, accountIds: list<string>}
+     */
+    private function seedLoadTestUser(SymfonyStyle $io): array
+    {
+        $io->writeln('Ensuring load-test user (load_test@example.com)...');
+
+        $userId    = (string) UserId::generate();
+        $accountId = (string) AccountId::generate();
+        $now       = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        // Upsert user — safe to call on every seed run
+        $this->connection->executeStatement(
+            'INSERT INTO users
+                (id, email, first_name, last_name, password_hash, kyc_status, status, email_verified_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (email) DO NOTHING',
+            [
+                $userId,
+                'load_test@example.com',
+                'Load',
+                'Test',
+                password_hash('Password123!', PASSWORD_ARGON2ID),
+                'verified',
+                'active',
+                $now,
+                $now,
+                $now,
+            ]
+        );
+
+        // Fetch actual user ID in case the row already existed
+        $existingId = $this->connection->fetchOne(
+            'SELECT id FROM users WHERE email = ?',
+            ['load_test@example.com']
+        );
+
+        $resolvedUserId = is_string($existingId) ? $existingId : $userId;
+
+        // Query existing accounts by currency — insert only what is missing.
+        // Avoids violating the unique (user_id, currency) partial index on re-seed.
+        $existingByCurrency = [];
+        foreach ($this->connection->fetchAllAssociative(
+            'SELECT id, currency FROM accounts WHERE user_id = ? AND status = ?',
+            [$resolvedUserId, 'active']
+        ) as $row) {
+            $existingByCurrency[(string) $row['currency']] = (string) $row['id'];
+        }
+
+        if (!isset($existingByCurrency['USD'])) {
+            $this->connection->executeStatement(
+                'INSERT INTO accounts (id, user_id, currency, balance, name, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$accountId, $resolvedUserId, 'USD', '10000.00000000', 'USD Account', 'active', $now, $now]
+            );
+            $existingByCurrency['USD'] = $accountId;
+        }
+
+        $toAccountId = (string) AccountId::generate();
+        if (!isset($existingByCurrency['EUR'])) {
+            $this->connection->executeStatement(
+                'INSERT INTO accounts (id, user_id, currency, balance, name, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$toAccountId, $resolvedUserId, 'EUR', '10000.00000000', 'EUR Account', 'active', $now, $now]
+            );
+            $existingByCurrency['EUR'] = $toAccountId;
+        }
+
+        return [
+            'userIds'    => [$resolvedUserId],
+            'accountIds' => array_values($existingByCurrency),
+        ];
     }
 
     /** @return list<string> */
@@ -80,9 +202,9 @@ final class SeedCommand extends Command
                 'password_hash'     => password_hash('Password123!', PASSWORD_ARGON2ID),
                 'kyc_status'        => 'verified',
                 'status'            => 'active',
-                'email_verified_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                'created_at'        => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                'updated_at'        => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'email_verified_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'created_at'        => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'updated_at'        => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
             ];
 
             if (count($batch) >= 500) {
@@ -119,11 +241,11 @@ final class SeedCommand extends Command
                     'id'         => $id,
                     'user_id'    => $userId,
                     'currency'   => $currency,
-                    'balance'    => number_format(rand(10000, 1000000) / 100, 8, '.', ''),
+                    'balance'    => number_format(random_int(10000, 1000000) / 100, 8, '.', ''),
                     'name'       => "{$currency} Account",
                     'status'     => 'active',
-                    'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                    'updated_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+                    'created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                    'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
                 ];
 
                 if (count($batch) >= 500) {
@@ -164,9 +286,9 @@ final class SeedCommand extends Command
             }
 
             $id      = (string) TransferId::generate();
-            $amount  = number_format(rand(100, 10000) / 100, 8, '.', '');
-            $daysAgo = rand(0, 365);
-            $date    = (new \DateTimeImmutable("-{$daysAgo} days"))->format('Y-m-d H:i:s');
+            $amount  = number_format(random_int(100, 10000) / 100, 8, '.', '');
+            $daysAgo = random_int(0, 365);
+            $date    = (new DateTimeImmutable("-{$daysAgo} days"))->format('Y-m-d H:i:s');
             $status  = $statuses[array_rand($statuses)];
             $userId  = $userIds[array_rand($userIds)];
 

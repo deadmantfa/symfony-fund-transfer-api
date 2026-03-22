@@ -24,5 +24,7 @@ nelmio_api_doc:
         security:
             - bearerAuth: []
     areas:
-        path_patterns:
-            - ^/api
+        default:
+            path_patterns:
+                - ^/api
+            name_patterns: []

@@ -3,25 +3,26 @@
 declare(strict_types=1);
 
 use Doctrine\DBAL\Connection;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class AccountControllerTest extends WebTestCase
 {
     private string $token;
-    private \Symfony\Bundle\FrameworkBundle\KernelBrowser $client;
+    private KernelBrowser $client;
 
     protected function setUp(): void
     {
         parent::setUp();
         // Truncate tables first using bootKernel (not createClient)
-        static::bootKernel();
+        self::bootKernel();
         /** @var Connection $conn */
-        $conn = static::getContainer()->get('doctrine.dbal.default_connection');
+        $conn = self::getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('TRUNCATE TABLE refresh_tokens, users, accounts RESTART IDENTITY CASCADE');
-        static::ensureKernelShutdown();
+        self::ensureKernelShutdown();
 
         // Now register and get a token
-        $this->client = static::createClient();
+        $this->client = self::createClient();
         $this->client->request(
             'POST',
             '/api/v1/auth/register',
@@ -164,7 +165,7 @@ final class AccountControllerTest extends WebTestCase
         $accountId = $body['data']['id'];
 
         // Artificially fund the account to simulate a non-zero balance
-        /** @var \Doctrine\DBAL\Connection $conn */
+        /** @var Connection $conn */
         $conn = $this->client->getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('UPDATE accounts SET balance = 100 WHERE id = ?', [$accountId]);
 

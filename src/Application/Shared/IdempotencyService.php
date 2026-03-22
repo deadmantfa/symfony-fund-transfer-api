@@ -6,12 +6,13 @@ namespace App\Application\Shared;
 
 use Psr\Cache\CacheItemPoolInterface;
 
-final class IdempotencyService
+final readonly class IdempotencyService
 {
     public function __construct(
-        private readonly CacheItemPoolInterface $cache,
-        private readonly int $ttl,
-    ) {}
+        private CacheItemPoolInterface $cache,
+        private int $ttl,
+    ) {
+    }
 
     public function exists(string $key): bool
     {

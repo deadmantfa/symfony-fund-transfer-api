@@ -1,0 +1,9 @@
+services:
+    # Silence expected 4xx HTTP exceptions logged during integration tests.
+    # Symfony's built-in Logger writes to stderr at 'warning' level by default;
+    # tests intentionally trigger 403/404/422 responses which would otherwise
+    # flood the test output with [error] lines.
+    logger:
+        class: Symfony\Component\HttpKernel\Log\Logger
+        arguments:
+            - 'critical'

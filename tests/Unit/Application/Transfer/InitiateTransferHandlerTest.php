@@ -11,12 +11,15 @@ use App\Domain\Account\Account;
 use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountRepository;
 use App\Domain\Shared\ValueObject\CurrencyCode;
+use App\Domain\Transfer\Transfer;
 use App\Domain\Transfer\TransferId;
 use App\Domain\Transfer\TransferRepository;
 use App\Domain\Transfer\TransferStatus;
 use App\Domain\User\User;
 use App\Domain\User\UserId;
 use App\Domain\User\UserRepository;
+use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -39,6 +42,7 @@ test('initiates transfer and returns pending transfer', function (): void {
     $user     = makeVerifiedUser();
     $fromAcct = makeActiveAccount($userId);
     $toAcct   = makeActiveAccount(UserId::generate());
+    $key      = 'test-key-' . uniqid();
 
     /** @var UserRepository $userRepo */
     $userRepo = $this->createStub(UserRepository::class);
@@ -47,10 +51,10 @@ test('initiates transfer and returns pending transfer', function (): void {
     /** @var AccountRepository $accountRepo */
     $accountRepo = $this->createStub(AccountRepository::class);
     $accountRepo->method('findById')->willReturnCallback(
-        fn (AccountId $id) => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+        fn (AccountId $id): Account => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
     );
 
-    /** @var TransferRepository&\PHPUnit\Framework\MockObject\MockObject $transferRepo */
+    /** @var TransferRepository&MockObject $transferRepo */
     $transferRepo = $this->createMock(TransferRepository::class);
     $transferRepo->method('findByIdempotencyKey')->willReturn(null);
     $transferRepo->method('existsDuplicate')->willReturn(false);
@@ -59,25 +63,32 @@ test('initiates transfer and returns pending transfer', function (): void {
 
     $idempotency = new IdempotencyService(new ArrayAdapter(), 86400);
 
-    /** @var MessageBusInterface&\PHPUnit\Framework\MockObject\MockObject $bus */
+    /** @var MessageBusInterface&MockObject $bus */
     $bus = $this->createMock(MessageBusInterface::class);
     $bus->expects($this->once())
         ->method('dispatch')
         ->willReturn(new Envelope(new ProcessTransferCommand('id')));
 
-    $handler  = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+    $handler  = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
     $transfer = $handler(new InitiateTransferCommand(
         userId: (string) $userId,
         fromAccountId: (string) $fromAcct->id,
         toAccountId: (string) $toAcct->id,
         amount: '50.00',
         currency: 'USD',
-        idempotencyKey: 'test-key-' . uniqid(),
+        idempotencyKey: $key,
         ipAddress: '127.0.0.1',
         userAgent: 'test',
     ));
 
     expect($transfer->status)->toBe(TransferStatus::Pending);
+
+    // Verify idempotency key was stored with correct content (kills RemoveArrayItem + RemoveStringCast mutations)
+    $scopedKey = $userId . '.' . $key;
+    $stored    = $idempotency->get($scopedKey);
+    expect($stored)->toBeArray()
+        ->and($stored['transfer_id'])->toBe((string) $transfer->id)  // string cast must be present
+        ->and($stored['status'])->toBe('pending');
 });
 
 test('throws DuplicateIdempotencyKeyException for duplicate key', function (): void {
@@ -95,9 +106,9 @@ test('throws DuplicateIdempotencyKeyException for duplicate key', function (): v
     /** @var MessageBusInterface $bus */
     $bus = $this->createStub(MessageBusInterface::class);
 
-    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
 
-    expect(fn () => $handler(new InitiateTransferCommand(
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
         userId: $userId,
         fromAccountId: (string) AccountId::generate(),
         toAccountId: (string) AccountId::generate(),
@@ -107,6 +118,64 @@ test('throws DuplicateIdempotencyKeyException for duplicate key', function (): v
         ipAddress: '127.0.0.1',
         userAgent: 'test',
     )))->toThrow(DuplicateIdempotencyKeyException::class);
+});
+
+test('throws when user not found', function (): void {
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn(null);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $idempotency  = new IdempotencyService(new ArrayAdapter(), 86400);
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
+
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
+        userId: (string) UserId::generate(),
+        fromAccountId: (string) AccountId::generate(),
+        toAccountId: (string) AccountId::generate(),
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'notfound-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(DomainException::class, 'User not found');
+});
+
+test('throws when from account not found', function (): void {
+    $user = makeVerifiedUser();
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturn(null); // both accounts return null
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $idempotency  = new IdempotencyService(new ArrayAdapter(), 86400);
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
+
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
+        userId: (string) $user->id,
+        fromAccountId: (string) AccountId::generate(),
+        toAccountId: (string) AccountId::generate(),
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'accnotfound-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(DomainException::class, 'accounts not found');
 });
 
 test('blocks transfer if KYC not verified', function (): void {
@@ -124,9 +193,9 @@ test('blocks transfer if KYC not verified', function (): void {
     /** @var MessageBusInterface $bus */
     $bus = $this->createStub(MessageBusInterface::class);
 
-    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
 
-    expect(fn () => $handler(new InitiateTransferCommand(
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
         userId: (string) $user->id,
         fromAccountId: (string) AccountId::generate(),
         toAccountId: (string) AccountId::generate(),
@@ -135,7 +204,7 @@ test('blocks transfer if KYC not verified', function (): void {
         idempotencyKey: 'k1',
         ipAddress: '127.0.0.1',
         userAgent: 'test',
-    )))->toThrow(\DomainException::class, 'KYC');
+    )))->toThrow(DomainException::class, 'KYC');
 });
 
 test('blocks transfer to same account', function (): void {
@@ -160,9 +229,9 @@ test('blocks transfer to same account', function (): void {
     /** @var MessageBusInterface $bus */
     $bus = $this->createStub(MessageBusInterface::class);
 
-    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
 
-    expect(fn () => $handler(new InitiateTransferCommand(
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
         userId: (string) $userId,
         fromAccountId: (string) $acct->id,
         toAccountId: (string) $acct->id,   // same account
@@ -171,7 +240,117 @@ test('blocks transfer to same account', function (): void {
         idempotencyKey: 'self-' . uniqid(),
         ipAddress: '127.0.0.1',
         userAgent: 'test',
-    )))->toThrow(\DomainException::class, 'same account');
+    )))->toThrow(DomainException::class, 'same account');
+});
+
+test('blocks transfer when user does not own source account', function (): void {
+    $user     = makeVerifiedUser();
+    $fromAcct = makeActiveAccount(UserId::generate()); // owned by different user
+    $toAcct   = makeActiveAccount(UserId::generate());
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturnCallback(
+        fn (AccountId $id): Account => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+    );
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $idempotency  = new IdempotencyService(new ArrayAdapter(), 86400);
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
+
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
+        userId: (string) $user->id,
+        fromAccountId: (string) $fromAcct->id,
+        toAccountId: (string) $toAcct->id,
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'own-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(DomainException::class, 'do not own');
+});
+
+test('blocks transfer when source account is frozen', function (): void {
+    $userId   = UserId::generate();
+    $user     = makeVerifiedUser();
+    $fromAcct = makeActiveAccount($userId);
+    $fromAcct->freeze();
+    $toAcct = makeActiveAccount(UserId::generate());
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturnCallback(
+        fn (AccountId $id): Account => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+    );
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $idempotency  = new IdempotencyService(new ArrayAdapter(), 86400);
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
+
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
+        userId: (string) $userId,
+        fromAccountId: (string) $fromAcct->id,
+        toAccountId: (string) $toAcct->id,
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'frz-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(DomainException::class);
+});
+
+test('blocks duplicate transfer detected by existsDuplicate', function (): void {
+    $userId   = UserId::generate();
+    $user     = makeVerifiedUser();
+    $fromAcct = makeActiveAccount($userId);
+    $toAcct   = makeActiveAccount(UserId::generate());
+
+    /** @var UserRepository $userRepo */
+    $userRepo = $this->createStub(UserRepository::class);
+    $userRepo->method('findById')->willReturn($user);
+
+    /** @var AccountRepository $accountRepo */
+    $accountRepo = $this->createStub(AccountRepository::class);
+    $accountRepo->method('findById')->willReturnCallback(
+        fn (AccountId $id): Account => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+    );
+
+    /** @var TransferRepository $transferRepo */
+    $transferRepo = $this->createStub(TransferRepository::class);
+    $transferRepo->method('existsDuplicate')->willReturn(true);
+
+    $idempotency = new IdempotencyService(new ArrayAdapter(), 86400);
+    /** @var MessageBusInterface $bus */
+    $bus = $this->createStub(MessageBusInterface::class);
+
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
+
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
+        userId: (string) $userId,
+        fromAccountId: (string) $fromAcct->id,
+        toAccountId: (string) $toAcct->id,
+        amount: '10.00',
+        currency: 'USD',
+        idempotencyKey: 'dup-' . uniqid(),
+        ipAddress: '127.0.0.1',
+        userAgent: 'test',
+    )))->toThrow(DomainException::class, 'Duplicate transfer');
 });
 
 test('blocks transfer with zero or negative amount', function (): void {
@@ -187,7 +366,7 @@ test('blocks transfer with zero or negative amount', function (): void {
     /** @var AccountRepository $accountRepo */
     $accountRepo = $this->createStub(AccountRepository::class);
     $accountRepo->method('findById')->willReturnCallback(
-        fn (AccountId $id) => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
+        fn (AccountId $id): Account => $fromAcct->id->equals($id) ? $fromAcct : $toAcct
     );
 
     /** @var TransferRepository $transferRepo */
@@ -199,9 +378,9 @@ test('blocks transfer with zero or negative amount', function (): void {
     /** @var MessageBusInterface $bus */
     $bus = $this->createStub(MessageBusInterface::class);
 
-    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus);
+    $handler = new InitiateTransferHandler($userRepo, $accountRepo, $transferRepo, $idempotency, $bus, new NullLogger());
 
-    expect(fn () => $handler(new InitiateTransferCommand(
+    expect(fn (): Transfer => $handler(new InitiateTransferCommand(
         userId: (string) $userId,
         fromAccountId: (string) $fromAcct->id,
         toAccountId: (string) $toAcct->id,
@@ -210,5 +389,5 @@ test('blocks transfer with zero or negative amount', function (): void {
         idempotencyKey: 'zero-' . uniqid(),
         ipAddress: '127.0.0.1',
         userAgent: 'test',
-    )))->toThrow(\DomainException::class, 'positive');
+    )))->toThrow(DomainException::class, 'positive');
 });

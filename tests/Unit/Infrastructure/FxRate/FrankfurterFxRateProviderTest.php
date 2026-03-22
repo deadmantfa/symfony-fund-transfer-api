@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\FxRate\FxRate;
 use App\Domain\FxRate\FxRateUnavailableException;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Infrastructure\FxRate\FrankfurterFxRateProvider;
@@ -31,11 +32,11 @@ test('returns FxRate on successful response', function (): void {
 test('throws FxRateUnavailableException on HTTP failure', function (): void {
     /** @var HttpClientInterface&MockObject $client */
     $client = $this->createMock(HttpClientInterface::class);
-    $client->method('request')->willThrowException(new \RuntimeException('network error'));
+    $client->method('request')->willThrowException(new RuntimeException('network error'));
 
     $provider = new FrankfurterFxRateProvider($client, 'https://api.frankfurter.app');
 
-    expect(fn () => $provider->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
+    expect(fn (): FxRate => $provider->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
         ->toThrow(FxRateUnavailableException::class);
 });
 
@@ -53,6 +54,6 @@ test('throws FxRateUnavailableException when currency not in response', function
 
     $provider = new FrankfurterFxRateProvider($client, 'https://api.frankfurter.app');
 
-    expect(fn () => $provider->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
+    expect(fn (): FxRate => $provider->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
         ->toThrow(FxRateUnavailableException::class);
 });

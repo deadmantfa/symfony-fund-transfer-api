@@ -7,8 +7,8 @@ namespace App\Application\Account;
 final readonly class UpdateAccountCommand
 {
     public function __construct(
-        public readonly string $accountId,
-        public readonly ?string $name,
+        public string $accountId,
+        public ?string $name,
     ) {
     }
 }

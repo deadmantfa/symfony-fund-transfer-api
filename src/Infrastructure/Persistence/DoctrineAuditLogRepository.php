@@ -7,11 +7,14 @@ namespace App\Infrastructure\Persistence;
 use App\Domain\AuditLog\AuditLog;
 use App\Domain\AuditLog\AuditLogId;
 use App\Domain\AuditLog\AuditLogRepository;
+use App\Domain\User\UserId;
 use Doctrine\DBAL\Connection;
 
-final class DoctrineAuditLogRepository implements AuditLogRepository
+final readonly class DoctrineAuditLogRepository implements AuditLogRepository
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection)
+    {
+    }
 
     public function append(AuditLog $log): void
     {
@@ -25,7 +28,7 @@ final class DoctrineAuditLogRepository implements AuditLogRepository
                 $log->entityType,
                 $log->entityId,
                 $log->action,
-                $log->actorId !== null ? (string) $log->actorId : null,
+                $log->actorId instanceof UserId ? (string) $log->actorId : null,
                 $log->oldValue !== null ? json_encode($log->oldValue) : null,
                 $log->newValue !== null ? json_encode($log->newValue) : null,
                 $log->ipAddress,

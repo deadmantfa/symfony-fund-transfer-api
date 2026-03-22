@@ -8,6 +8,7 @@ use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Domain\Shared\ValueObject\Money;
 use App\Domain\User\UserId;
 use DateTimeImmutable;
+use DomainException;
 
 final class Account
 {
@@ -76,7 +77,7 @@ final class Account
     {
         $this->assertActive();
         if (!$this->balance->isSufficientFor($amount)) {
-            throw new \DomainException("Insufficient funds: balance {$this->balance} < debit {$amount}");
+            throw new DomainException("Insufficient funds: balance {$this->balance} < debit {$amount}");
         }
         $this->balance  = $this->balance->subtract($amount);
         $this->updatedAt = new DateTimeImmutable();
@@ -92,7 +93,7 @@ final class Account
     public function unfreeze(): void
     {
         if ($this->status !== AccountStatus::Frozen) {
-            throw new \DomainException('Account is not frozen.');
+            throw new DomainException('Account is not frozen.');
         }
         $this->status    = AccountStatus::Active;
         $this->updatedAt = new DateTimeImmutable();
@@ -101,7 +102,7 @@ final class Account
     public function close(): void
     {
         if (!$this->balance->isZero()) {
-            throw new \DomainException('Cannot close account with non-zero balance.');
+            throw new DomainException('Cannot close account with non-zero balance.');
         }
         $this->status    = AccountStatus::Closed;
         $this->updatedAt = new DateTimeImmutable();
@@ -121,7 +122,7 @@ final class Account
     private function assertActive(): void
     {
         if (!$this->status->allowsTransactions()) {
-            throw new \DomainException("Account {$this->id} is not active (status: {$this->status->value}).");
+            throw new DomainException("Account {$this->id} is not active (status: {$this->status->value}).");
         }
     }
 }

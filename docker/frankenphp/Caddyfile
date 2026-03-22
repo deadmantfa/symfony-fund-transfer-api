@@ -1,38 +1,92 @@
 {
-    frankenphp
+    # Enough threads to service the k6 spike (20 VUs × 3 concurrent requests + headroom).
+    # Without this, the default thread count (≈ 2×CPU) is exhausted under load and
+    # Caddy drops connections with "unexpected EOF" / "connection refused".
+    frankenphp {
+        num_threads 32
+    }
     admin off
 }
 
-# HTTP - redirect to HTTPS in production; serve directly in dev
-:80 {
-    root * /app/public
-    encode gzip
-
-    header {
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Content-Security-Policy "default-src 'none'"
-        Referrer-Policy "no-referrer"
-        Permissions-Policy "geolocation=(), microphone=()"
-    }
-
-    php_server
+# Redirect HTTP → HTTPS (all subdomains)
+fund-transfer.local:80, db.fund-transfer.local:80, mail.fund-transfer.local:80 {
+    redir https://{host}{uri} 308
 }
 
-# HTTPS - full security headers
-:443 {
+# HTTPS — Caddy issues a local TLS cert via its internal CA
+fund-transfer.local {
     root * /app/public
     encode gzip
+
     tls internal
 
+    # Security headers applied to every response
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
-        Content-Security-Policy "default-src 'none'"
         Referrer-Policy "no-referrer"
         Permissions-Policy "geolocation=(), microphone=()"
     }
 
-    php_server
+    # Redirect /favicon.ico to the SVG favicon
+    redir /favicon.ico /favicon.svg 301
+
+    # Coverage HTML report — self-contained assets, allow inline scripts/styles
+    handle /reports/coverage* {
+        header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+        uri strip_prefix /reports/coverage
+        root * /app/docs/reports/coverage
+        file_server
+    }
+
+    # Relaxed CSP for the API docs UI — Redocly loads scripts + fonts from CDNs
+    handle /api/docs* {
+        header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdn.redoc.ly; connect-src 'self' https://cdn.jsdelivr.net; worker-src blob:"
+        php_server
+    }
+
+    # Strict CSP for the landing page (inline styles only — no external resources)
+    handle / {
+        header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
+        php_server
+    }
+
+    # Strict CSP for all API endpoints — no scripts, no styles needed
+    handle /api/* {
+        header Content-Security-Policy "default-src 'none'"
+        php_server
+    }
+
+    # Catch-all for any other paths
+    handle {
+        header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+        php_server
+    }
+}
+
+# Database browser — pgweb at https://db.fund-transfer.local
+db.fund-transfer.local {
+    tls internal
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+    }
+
+    reverse_proxy pgweb:8081
+}
+
+# Mail catcher — Mailpit at https://mail.fund-transfer.local
+mail.fund-transfer.local {
+    tls internal
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+    }
+
+    reverse_proxy mailpit:8025
 }

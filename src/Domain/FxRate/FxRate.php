@@ -11,12 +11,12 @@ use DateTimeImmutable;
 final readonly class FxRate
 {
     public function __construct(
-        public readonly FxRateId $id,
-        public readonly CurrencyCode $baseCurrency,
-        public readonly CurrencyCode $targetCurrency,
-        public readonly BigDecimal $rate,
-        public readonly string $provider,
-        public readonly DateTimeImmutable $fetchedAt,
+        public FxRateId $id,
+        public CurrencyCode $baseCurrency,
+        public CurrencyCode $targetCurrency,
+        public BigDecimal $rate,
+        public string $provider,
+        public DateTimeImmutable $fetchedAt,
     ) {
     }
 }

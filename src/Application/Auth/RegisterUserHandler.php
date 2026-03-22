@@ -7,13 +7,18 @@ namespace App\Application\Auth;
 use App\Domain\User\User;
 use App\Domain\User\UserRepository;
 use App\Security\SecurityUser;
+use DomainException;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-final class RegisterUserHandler
+final readonly class RegisterUserHandler
 {
     public function __construct(
-        private readonly UserRepository $userRepository,
-        private readonly UserPasswordHasherInterface $passwordHasher,
+        private UserRepository $userRepository,
+        private UserPasswordHasherInterface $passwordHasher,
+        #[Autowire(service: 'monolog.logger.security')]
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -37,8 +42,8 @@ final class RegisterUserHandler
             $command->password,
         );
 
-        if ($this->userRepository->findByEmail($command->email) !== null) {
-            throw new \DomainException("Email '{$command->email}' is already registered.");
+        if ($this->userRepository->findByEmail($command->email) instanceof User) {
+            throw new DomainException("Email '{$command->email}' is already registered.");
         }
 
         $user = User::register(
@@ -51,6 +56,10 @@ final class RegisterUserHandler
         );
 
         $this->userRepository->save($user);
+
+        $this->logger->info('user.registered', [
+            'user_id' => (string) $user->id,
+        ]);
 
         return $user;
     }

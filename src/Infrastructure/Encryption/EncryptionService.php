@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Encryption;
 
+use InvalidArgumentException;
+use Throwable;
+
 /**
  * Libsodium-based symmetric encryption for PII fields.
  * Uses XSalsa20-Poly1305 via sodium_crypto_secretbox.
  * Each encryption generates a random 24-byte nonce.
  */
-final class EncryptionService
+final readonly class EncryptionService
 {
-    private readonly string $key;
+    private string $key;
 
     public function __construct(string $keyHex)
     {
         if (strlen($keyHex) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Encryption key must be a ' . (SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2) . '-char hex string.'
             );
         }
@@ -41,7 +44,7 @@ final class EncryptionService
             $plaintext  = sodium_crypto_secretbox_open($ciphertext, $nonce, $this->key);
 
             return $plaintext === false ? null : $plaintext;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

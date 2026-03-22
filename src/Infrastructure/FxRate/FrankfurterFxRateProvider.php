@@ -10,13 +10,15 @@ use App\Domain\FxRate\FxRateProviderInterface;
 use App\Domain\FxRate\FxRateUnavailableException;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use Brick\Math\BigDecimal;
+use DateTimeImmutable;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Throwable;
 
-final class FrankfurterFxRateProvider implements FxRateProviderInterface
+final readonly class FrankfurterFxRateProvider implements FxRateProviderInterface
 {
     public function __construct(
-        private readonly HttpClientInterface $httpClient,
-        private readonly string $baseUrl,
+        private HttpClientInterface $httpClient,
+        private string $baseUrl,
     ) {
     }
 
@@ -41,11 +43,11 @@ final class FrankfurterFxRateProvider implements FxRateProviderInterface
                 targetCurrency: $to,
                 rate: BigDecimal::of((string) $data['rates'][(string) $to])->toScale(10),
                 provider: 'frankfurter',
-                fetchedAt: new \DateTimeImmutable(),
+                fetchedAt: new DateTimeImmutable(),
             );
         } catch (FxRateUnavailableException $e) {
             throw $e;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             throw new FxRateUnavailableException($from, $to);
         }
     }
@@ -56,7 +58,7 @@ final class FrankfurterFxRateProvider implements FxRateProviderInterface
             $response = $this->httpClient->request('GET', "{$this->baseUrl}/currencies");
 
             return array_keys($response->toArray());
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return [];
         }
     }

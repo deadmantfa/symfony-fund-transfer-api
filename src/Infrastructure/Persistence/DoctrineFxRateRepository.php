@@ -9,11 +9,12 @@ use App\Domain\FxRate\FxRateId;
 use App\Domain\FxRate\FxRateRepository;
 use App\Domain\Shared\ValueObject\CurrencyCode;
 use Brick\Math\BigDecimal;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 
-final class DoctrineFxRateRepository implements FxRateRepository
+final readonly class DoctrineFxRateRepository implements FxRateRepository
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private Connection $connection)
     {
     }
 
@@ -42,7 +43,7 @@ final class DoctrineFxRateRepository implements FxRateRepository
             targetCurrency: new CurrencyCode($row['target_currency']),
             rate: BigDecimal::of((string) $row['rate']),
             provider: $row['provider'],
-            fetchedAt: new \DateTimeImmutable($row['fetched_at']),
+            fetchedAt: new DateTimeImmutable($row['fetched_at']),
         );
     }
 

@@ -24,6 +24,7 @@ services:
 
     App\Infrastructure\FxRate\FrankfurterFxRateProvider:
         arguments:
+            $httpClient: '@frankfurter.client'
             $baseUrl: '%env(FX_PROVIDER_URL)%'
 
     App\Domain\FxRate\FxRateProviderInterface:
@@ -55,10 +56,18 @@ services:
         arguments:
             $ttl: 86400
 
+    App\Monolog\CorrelationIdProcessor:
+        tags:
+            - { name: monolog.processor }
+
     App\Controller\Api\V1\AuthController:
         arguments:
             $registerLimiter: '@limiter.register_limiter'
             $refreshTokenTtl: '%env(int:JWT_REFRESH_TTL)%'
+
+    App\Controller\ReportController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
 
 when@test:
     services:

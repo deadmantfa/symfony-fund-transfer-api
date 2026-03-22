@@ -10,6 +10,7 @@ use App\Domain\Shared\ValueObject\CurrencyCode;
 use App\Infrastructure\FxRate\CachingFxRateService;
 use App\Infrastructure\FxRate\StubFxRateProvider;
 use Brick\Math\BigDecimal;
+use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
@@ -21,7 +22,7 @@ function makeFallbackFxRate(): FxRate
         targetCurrency: new CurrencyCode('EUR'),
         rate: BigDecimal::of('0.90'),
         provider: 'frankfurter',
-        fetchedAt: new \DateTimeImmutable('-2 hours'),
+        fetchedAt: new DateTimeImmutable('-2 hours'),
     );
 }
 
@@ -102,12 +103,12 @@ test('throws when provider fails and no DB fallback', function (): void {
         3600,
     );
 
-    expect(fn () => $service->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
+    expect(fn (): FxRate => $service->getRate(new CurrencyCode('USD'), new CurrencyCode('EUR')))
         ->toThrow(FxRateUnavailableException::class);
 });
 
 test('returns cached rate on second call without hitting provider twice', function (): void {
-    /** @var FxRateRepository&\PHPUnit\Framework\MockObject\MockObject $repo */
+    /** @var FxRateRepository&MockObject $repo */
     $repo = $this->createMock(FxRateRepository::class);
     $repo->expects($this->once())->method('save');
 

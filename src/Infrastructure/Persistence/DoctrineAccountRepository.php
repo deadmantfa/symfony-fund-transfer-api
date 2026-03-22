@@ -11,10 +11,11 @@ use App\Domain\Account\AccountStatus;
 use App\Domain\User\UserId;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use DomainException;
 
-final class DoctrineAccountRepository implements AccountRepository
+final readonly class DoctrineAccountRepository implements AccountRepository
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private Connection $connection)
     {
     }
 
@@ -46,7 +47,7 @@ final class DoctrineAccountRepository implements AccountRepository
             [(string) $userId],
         );
 
-        return array_map(fn (array $row): Account => Account::fromRow($row), $rows);
+        return array_map(Account::fromRow(...), $rows);
     }
 
     public function save(Account $account): void
@@ -72,7 +73,7 @@ final class DoctrineAccountRepository implements AccountRepository
                 ],
             );
         } catch (UniqueConstraintViolationException $e) {
-            throw new \DomainException(
+            throw new DomainException(
                 "User already has a {$account->currency} account.",
                 0,
                 $e,

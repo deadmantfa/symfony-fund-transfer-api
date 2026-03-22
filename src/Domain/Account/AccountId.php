@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Account;
 
 use App\Domain\Shared\ValueObject\Uuid;
+use Stringable;
 
-final readonly class AccountId
+final readonly class AccountId implements Stringable
 {
-    public function __construct(public readonly string $value)
+    public function __construct(public string $value)
     {
         new Uuid($value); // validates format
     }

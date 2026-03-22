@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\ValueObject;
 
-final readonly class CurrencyCode
+use InvalidArgumentException;
+use Stringable;
+
+final readonly class CurrencyCode implements Stringable
 {
-    public function __construct(public readonly string $value)
+    public function __construct(public string $value)
     {
         if (!preg_match('/^[A-Z]{3}$/', $value)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid currency code: {$value}. Must be 3 uppercase letters (ISO 4217)."
             );
         }

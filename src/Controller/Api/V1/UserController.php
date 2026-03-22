@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Controller\Api\V1;
 
+use App\Domain\Account\Account;
 use App\Domain\Account\AccountRepository;
 use App\Domain\Transfer\TransferRepository;
 use App\Domain\User\UserRepository;
 use App\Security\SecurityUser;
+use DateTimeInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[OA\Tag(name: 'Users')]
 #[Route('/api/v1/users')]
 final class UserController extends AbstractController
 {
@@ -23,6 +27,14 @@ final class UserController extends AbstractController
     ) {
     }
 
+    #[OA\Get(
+        path: '/api/v1/users/me',
+        summary: 'Get the authenticated user profile',
+        responses: [
+            new OA\Response(response: 200, description: 'User profile'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ],
+    )]
     #[Route('/me', methods: ['GET'])]
     public function me(): JsonResponse
     {
@@ -39,10 +51,18 @@ final class UserController extends AbstractController
             'last_name'  => $user->lastName,
             'kyc_status' => $user->kycStatus->value,
             'status'     => $user->status->value,
-            'created_at' => $user->createdAt->format(\DateTimeInterface::ATOM),
+            'created_at' => $user->createdAt->format(DateTimeInterface::ATOM),
         ]]);
     }
 
+    #[OA\Get(
+        path: '/api/v1/users/me/export',
+        summary: 'GDPR data export — returns user profile, accounts, and transfer history',
+        responses: [
+            new OA\Response(response: 200, description: 'Full data export'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ],
+    )]
     #[Route('/me/export', methods: ['GET'])]
     public function export(): JsonResponse
     {
@@ -62,7 +82,7 @@ final class UserController extends AbstractController
                     'amount'         => (string) $t->amount->amount,
                     'currency'       => (string) $t->amount->currency,
                     'status'         => $t->status->value,
-                    'created_at'     => $t->createdAt->format(\DateTimeInterface::ATOM),
+                    'created_at'     => $t->createdAt->format(DateTimeInterface::ATOM),
                 ];
             }
         }
@@ -74,9 +94,9 @@ final class UserController extends AbstractController
                 'first_name' => $user->firstName,
                 'last_name'  => $user->lastName,
                 'kyc_status' => $user->kycStatus->value,
-                'created_at' => $user->createdAt->format(\DateTimeInterface::ATOM),
+                'created_at' => $user->createdAt->format(DateTimeInterface::ATOM),
             ],
-            'accounts'  => array_map(fn ($a) => [
+            'accounts'  => array_map(fn (Account $a): array => [
                 'id'       => (string) $a->id,
                 'currency' => (string) $a->currency,
                 'name'     => $a->name,
@@ -86,6 +106,14 @@ final class UserController extends AbstractController
         ]]);
     }
 
+    #[OA\Delete(
+        path: '/api/v1/users/me',
+        summary: 'Close the authenticated user account (GDPR right to erasure)',
+        responses: [
+            new OA\Response(response: 204, description: 'Account closed'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ],
+    )]
     #[Route('/me', methods: ['DELETE'])]
     public function delete(): JsonResponse
     {

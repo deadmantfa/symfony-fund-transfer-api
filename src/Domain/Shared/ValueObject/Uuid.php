@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\ValueObject;
 
-final readonly class Uuid
+use InvalidArgumentException;
+use Stringable;
+
+final readonly class Uuid implements Stringable
 {
-    public function __construct(public readonly string $value)
+    public function __construct(public string $value)
     {
         if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            throw new \InvalidArgumentException("Invalid UUID: {$value}");
+            throw new InvalidArgumentException("Invalid UUID: {$value}");
         }
     }
 

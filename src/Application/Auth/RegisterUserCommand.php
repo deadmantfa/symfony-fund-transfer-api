@@ -7,11 +7,11 @@ namespace App\Application\Auth;
 final readonly class RegisterUserCommand
 {
     public function __construct(
-        public readonly string $email,
-        public readonly string $password,
-        public readonly string $firstName,
-        public readonly string $lastName,
-        public readonly ?string $phoneNumber = null,
+        public string $email,
+        public string $password,
+        public string $firstName,
+        public string $lastName,
+        public ?string $phoneNumber = null,
     ) {
     }
 }

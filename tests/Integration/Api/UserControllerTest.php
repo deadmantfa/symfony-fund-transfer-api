@@ -10,16 +10,16 @@ final class UserControllerTest extends WebTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        static::bootKernel();
+        self::bootKernel();
         /** @var Connection $conn */
-        $conn = static::getContainer()->get('doctrine.dbal.default_connection');
+        $conn = self::getContainer()->get('doctrine.dbal.default_connection');
         $conn->executeStatement('TRUNCATE TABLE refresh_tokens, users, accounts, transfers, ledger_entries, audit_logs RESTART IDENTITY CASCADE');
-        static::ensureKernelShutdown();
+        self::ensureKernelShutdown();
     }
 
     public function test_get_my_profile(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/register',
@@ -43,7 +43,7 @@ final class UserControllerTest extends WebTestCase
 
     public function test_gdpr_export_returns_all_user_data(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/register',
@@ -68,7 +68,7 @@ final class UserControllerTest extends WebTestCase
 
     public function test_delete_account_closes_user(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request(
             'POST',
             '/api/v1/auth/register',

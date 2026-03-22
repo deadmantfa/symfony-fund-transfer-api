@@ -7,14 +7,15 @@ namespace App\Application\Transfer;
 final readonly class InitiateTransferCommand
 {
     public function __construct(
-        public readonly string $userId,
-        public readonly string $fromAccountId,
-        public readonly string $toAccountId,
-        public readonly string $amount,
-        public readonly string $currency,
-        public readonly string $idempotencyKey,
-        public readonly string $ipAddress,
-        public readonly string $userAgent,
-        public readonly ?string $note = null,
-    ) {}
+        public string $userId,
+        public string $fromAccountId,
+        public string $toAccountId,
+        public string $amount,
+        public string $currency,
+        public string $idempotencyKey,
+        public string $ipAddress,
+        public string $userAgent,
+        public ?string $note = null,
+    ) {
+    }
 }

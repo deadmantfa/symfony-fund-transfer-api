@@ -11,18 +11,25 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      SERVER_NAME: ":80"
+      # Caddyfile owns hostname config — SERVER_NAME not required
       APP_ENV: dev
       DATABASE_URL: postgresql://app:secret@postgres:5432/fund_transfer?serverVersion=16&charset=utf8
       REDIS_URL: redis://redis:6379
       MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages
+    networks:
+      default:
+        # Allows other containers (e.g. k6) to reach the app as fund-transfer.local
+        # directly within the Docker network without extra_hosts tricks.
+        aliases:
+          - fund-transfer.local
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      # Resolve the domain to 127.0.0.1 inside the container — no /etc/hosts needed
+      test: ["CMD", "curl", "-fk", "--resolve", "fund-transfer.local:443:127.0.0.1", "https://fund-transfer.local/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,7 +38,10 @@ services:
     build:
       context: .
       dockerfile: docker/frankenphp/Dockerfile
-    command: php bin/console messenger:consume async --time-limit=3600 -vv
+    # Setup Redis stream group on first start, then begin consuming
+    command: >
+      sh -c "php bin/console messenger:setup-transports &&
+             php bin/console messenger:consume async --time-limit=3600 -vv"
     environment:
       APP_ENV: dev
       DATABASE_URL: postgresql://app:secret@postgres:5432/fund_transfer?serverVersion=16&charset=utf8
@@ -40,6 +50,12 @@ services:
     depends_on:
       app:
         condition: service_healthy
+    healthcheck:
+      # Worker has no HTTP server — verify PHP is still running
+      test: ["CMD", "php", "-r", "exit(0);"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   postgres:
@@ -69,8 +85,31 @@ services:
 
   mailpit:
     image: axllent/mailpit:latest
-    ports:
-      - "8025:8025"
+    # Served via Caddy at https://mail.fund-transfer.local (no direct port needed)
+
+  pgweb:
+    image: sosedoff/pgweb:latest
+    # Served via Caddy at https://db.fund-transfer.local — auto-connects, no login screen.
+    environment:
+      DATABASE_URL: postgresql://app:secret@postgres:5432/fund_transfer?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  k6:
+    image: grafana/k6:latest
+    profiles: [load-test]
+    volumes:
+      - ./tests/load:/tests
+    environment:
+      API_URL:    https://fund-transfer.local
+      SEED_EMAIL: load_test@example.com
+      SEED_PASS:  Password123!
+    command: run --out json=/tests/results.json /tests/transfer-scenario.js
+    depends_on:
+      app:
+        condition: service_healthy
 
 volumes:
   postgres_data:

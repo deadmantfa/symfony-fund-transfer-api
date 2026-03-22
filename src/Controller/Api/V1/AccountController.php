@@ -15,6 +15,9 @@ use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountRepository;
 use App\Security\SecurityUser;
 use App\Security\Voter\AccountVoter;
+use DateTimeInterface;
+use DomainException;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
+#[OA\Tag(name: 'Accounts')]
 #[Route('/api/v1/accounts')]
 final class AccountController extends AbstractController
 {
@@ -33,6 +37,14 @@ final class AccountController extends AbstractController
     ) {
     }
 
+    #[OA\Get(
+        path: '/api/v1/accounts',
+        summary: 'List all accounts for the authenticated user',
+        responses: [
+            new OA\Response(response: 200, description: 'Array of accounts'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ],
+    )]
     #[Route('', methods: ['GET'])]
     public function list(#[CurrentUser] SecurityUser $user): JsonResponse
     {
@@ -43,6 +55,25 @@ final class AccountController extends AbstractController
         ]);
     }
 
+    #[OA\Post(
+        path: '/api/v1/accounts',
+        summary: 'Open a new account',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['currency', 'name'],
+                properties: [
+                    new OA\Property(property: 'currency', type: 'string', example: 'USD', description: 'ISO 4217 currency code'),
+                    new OA\Property(property: 'name', type: 'string', example: 'My USD Wallet'),
+                ],
+            ),
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Account created'),
+            new OA\Response(response: 409, description: 'User already has an account in this currency'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ],
+    )]
     #[Route('', methods: ['POST'])]
     public function create(Request $request, #[CurrentUser] SecurityUser $user): JsonResponse
     {
@@ -55,7 +86,7 @@ final class AccountController extends AbstractController
                 currency: $data['currency'] ?? '',
                 name: $data['name'] ?? '',
             ));
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return new JsonResponse(
                 ['type' => 'https://tools.ietf.org/html/rfc7807', 'title' => $e->getMessage(), 'status' => 409],
                 Response::HTTP_CONFLICT,
@@ -65,11 +96,21 @@ final class AccountController extends AbstractController
         return new JsonResponse(['data' => $this->serialize($account)], Response::HTTP_CREATED);
     }
 
+    #[OA\Get(
+        path: '/api/v1/accounts/{id}',
+        summary: 'Get a single account by ID',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Account details'),
+            new OA\Response(response: 403, description: 'Forbidden — account belongs to another user'),
+            new OA\Response(response: 404, description: 'Account not found'),
+        ],
+    )]
     #[Route('/{id}', methods: ['GET'])]
     public function get(string $id): JsonResponse
     {
         $account = $this->accountRepository->findById(new AccountId($id));
-        if ($account === null) {
+        if (!$account instanceof Account) {
             return new JsonResponse(['type' => 'not_found', 'title' => 'Account not found'], Response::HTTP_NOT_FOUND);
         }
         $this->denyAccessUnlessGranted(AccountVoter::VIEW, $account);
@@ -77,11 +118,26 @@ final class AccountController extends AbstractController
         return new JsonResponse(['data' => $this->serialize($account)]);
     }
 
+    #[OA\Patch(
+        path: '/api/v1/accounts/{id}',
+        summary: 'Rename an account',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))],
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(
+                properties: [new OA\Property(property: 'name', type: 'string', example: 'Savings')],
+            ),
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Updated account'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 404, description: 'Account not found'),
+        ],
+    )]
     #[Route('/{id}', methods: ['PATCH'])]
     public function update(string $id, Request $request): JsonResponse
     {
         $account = $this->accountRepository->findById(new AccountId($id));
-        if ($account === null) {
+        if (!$account instanceof Account) {
             return new JsonResponse(['type' => 'not_found', 'title' => 'Account not found'], Response::HTTP_NOT_FOUND);
         }
         $this->denyAccessUnlessGranted(AccountVoter::EDIT, $account);
@@ -94,7 +150,7 @@ final class AccountController extends AbstractController
                 accountId: $id,
                 name: $data['name'] ?? null,
             ));
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return new JsonResponse(
                 ['type' => 'https://tools.ietf.org/html/rfc7807', 'title' => $e->getMessage(), 'status' => 409],
                 Response::HTTP_CONFLICT,
@@ -106,18 +162,28 @@ final class AccountController extends AbstractController
         )]);
     }
 
+    #[OA\Delete(
+        path: '/api/v1/accounts/{id}',
+        summary: 'Close an account',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Account closed'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 404, description: 'Account not found'),
+        ],
+    )]
     #[Route('/{id}', methods: ['DELETE'])]
     public function close(string $id): JsonResponse
     {
         $account = $this->accountRepository->findById(new AccountId($id));
-        if ($account === null) {
+        if (!$account instanceof Account) {
             return new JsonResponse(['type' => 'not_found', 'title' => 'Account not found'], Response::HTTP_NOT_FOUND);
         }
         $this->denyAccessUnlessGranted(AccountVoter::DELETE, $account);
 
         try {
             ($this->closeHandler)(new CloseAccountCommand($id));
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return new JsonResponse(
                 ['type' => 'https://tools.ietf.org/html/rfc7807', 'title' => $e->getMessage(), 'status' => 409],
                 Response::HTTP_CONFLICT,
@@ -136,7 +202,7 @@ final class AccountController extends AbstractController
             'name'       => $account->name,
             'balance'    => (string) $account->balance->amount,
             'status'     => $account->status->value,
-            'created_at' => $account->createdAt->format(\DateTimeInterface::ATOM),
+            'created_at' => $account->createdAt->format(DateTimeInterface::ATOM),
         ];
     }
 }

@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace App\Application\Account;
 
+use App\Domain\Account\Account;
 use App\Domain\Account\AccountId;
 use App\Domain\Account\AccountRepository;
+use DomainException;
 
-final class CloseAccountHandler
+final readonly class CloseAccountHandler
 {
-    public function __construct(private readonly AccountRepository $accountRepository)
+    public function __construct(private AccountRepository $accountRepository)
     {
     }
 
     public function __invoke(CloseAccountCommand $command): void
     {
         $account = $this->accountRepository->findById(new AccountId($command->accountId));
-        if ($account === null) {
-            throw new \DomainException('Account not found.');
+        if (!$account instanceof Account) {
+            throw new DomainException('Account not found.');
         }
         $account->close();
         $this->accountRepository->save($account);
